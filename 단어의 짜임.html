@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단어의 짜임 연습</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root { --bg:#0b0f19; --fg:#f1f5f9; --tbox:#0f172a; --tbox-border:#334155; --cur:#1e1b4b; --gap-bg:#0b0f19; --gap-border:#475569; --gap-text:#94a3b8; --scroll-track:#0f172a; --scroll-thumb:#334155; --slot-filled:rgba(49,46,129,.6); --slot-ok:rgba(6,78,59,.5); --slot-bad:rgba(136,19,55,.4); --chip-bg:#1e293b; --chip-text:#fff; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: var(--bg); color: var(--fg); overflow-x: hidden; }
+        .hide-hints .hint { display: none !important; }
+
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+        .animate-shake { animation: shake 0.35s ease-in-out; }
+        @keyframes pulse-glow { 0%,100%{box-shadow:0 0 15px rgba(99,102,241,.3)} 50%{box-shadow:0 0 25px rgba(99,102,241,.7)} }
+        .glow-active { animation: pulse-glow 2.5s infinite; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--scroll-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
+
+        .block-chip { transition: all .15s ease; user-select: none; }
+        .block-chip:hover { transform: translateY(-2px); }
+        .block-chip:active { transform: scale(.95); }
+
+        .slot { min-height: 44px; border: 2px dashed #475569; transition: all .2s ease; cursor: pointer; }
+        .slot.active { border-color: #818cf8; border-style: solid; box-shadow: 0 0 0 3px rgba(129,140,248,.25); }
+        .slot.filled { border-style: solid; border-color: #6366f1; background: var(--slot-filled); }
+        .slot.ok { border-color: #10b981; background: var(--slot-ok); cursor: default; }
+        .slot.bad { border-color: #f43f5e; background: var(--slot-bad); }
+
+        .pick { transition: all .15s ease; }
+        /* 선택 상태는 테마 덮어쓰기보다 우선해야 하므로 !important */
+        .pick.on, .pick.on:hover { background: #4f46e5 !important; color: #fff !important; border-color: #818cf8 !important; box-shadow: 0 0 0 3px rgba(99,102,241,.3); }
+        .pick.ok, .pick.ok:hover { background: #059669 !important; color: #fff !important; border-color: #34d399 !important; }
+        .pick.bad, .pick.bad:hover { background: #be123c !important; color: #fff !important; border-color: #fb7185 !important; }
+        .gap.sel, .gap.sel:hover { background: #4f46e5 !important; color: #fff !important; border-color: #a5b4fc !important; }
+        .slot.filled { box-shadow: 0 0 0 3px rgba(99,102,241,.25); }
+        .slot.filled .text-white { color: #fff !important; }
+        .slot.filled { background: #4f46e5 !important; border-color: #818cf8 !important; }
+
+        .cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        @media (max-width: 639px) { .cols-3, .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+        /* 짜임 트리 */
+        .tnode { display: inline-flex; flex-direction: column; align-items: center; }
+        .tkids { display: flex; gap: 10px; align-items: flex-start; justify-content: center; position: relative; padding-top: 14px; }
+        .tkids::before { content: ""; position: absolute; top: 0; left: 50%; width: 2px; height: 14px; background: #6366f1; }
+        .tbox { border-radius: 10px; padding: 4px 10px; border: 1px solid var(--tbox-border); background: var(--tbox); text-align: center; white-space: nowrap; }
+        .tbox.cur { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,.25); background: var(--cur); }
+        .tbox.done { border-color: #10b981; }
+        .tbox.leaf { border-color: #f59e0b66; }
+        .gap { width: 32px; height: 32px; border-radius: 9999px; border: 2px solid var(--gap-border); background: var(--gap-bg); color: var(--gap-text); font-size: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; }
+        .gap:hover { border-color: #818cf8; color: #fff; transform: scale(1.15); }
+        .cchip { background: var(--chip-bg); color: var(--chip-text); }
+        /* 태블릿: 손가락 조작에 맞춰 가위·글자 칩을 키움 */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .gap { width: 38px; height: 38px; font-size: 14px; }
+            .cchip { width: 3rem; height: 3rem; font-size: 1.35rem; }
+            .pick { padding-top: .8rem; padding-bottom: .8rem; font-size: .85rem; }
+            .block-chip { padding: .7rem 1.1rem; font-size: .85rem; }
+            .tbox { padding: 6px 14px; }
+        }
+        .gap.sel { border-color: #a5b4fc; background: #4f46e5; color: #fff; transform: scale(1.15); box-shadow: 0 0 0 3px rgba(129,140,248,.35); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-4 py-3 shadow-lg">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-sitemap"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="font-bold text-sm sm:text-lg text-slate-100 flex items-center gap-2 truncate">
+                        단어의 짜임 연습
+                        <span class="text-xs bg-indigo-500/20 text-indigo-400 font-medium px-2 py-0.5 rounded-full border border-indigo-500/30 hidden sm:inline">직접 구성 요소 → 형성 방법</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden md:block">짜임 ✂️ 나누기 ➔ 형태소 종류 🧩 ➔ 형태소 성격 ➔ 형성 방법 트리</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+                <div class="bg-slate-800/90 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-300 hidden md:block" title="출제 단어 수">
+                    <i class="fa-solid fa-book mr-1"></i>단어 <span id="total-words-count">0</span>개
+                </div>
+                <button onclick="openRanking()" class="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 rounded-lg px-3 py-1.5 text-xs font-bold text-amber-300 flex items-center gap-1.5" title="랭킹 보기"><i class="fa-solid fa-ranking-star"></i><span id="score-chip">0점</span></button>
+                <button id="btn-sound" onclick="toggleSound()" class="p-2 text-slate-200 hover:text-white bg-slate-800 rounded-lg border border-slate-700 transition" title="음향 효과 토글"><i class="fa-solid fa-volume-high text-sm"></i></button>
+                <button onclick="openThemeModal()" class="p-2 text-slate-200 hover:text-white bg-slate-800 rounded-lg border border-slate-700 transition" title="디자인 테마"><i class="fa-solid fa-palette text-sm"></i></button>
+                <button onclick="showStart()" class="p-2 text-slate-200 hover:text-white bg-slate-800 rounded-lg border border-slate-700 transition" title="시작 화면"><i class="fa-solid fa-house text-sm"></i></button>
+                <button onclick="openGuide()" class="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-xs flex items-center space-x-1.5 shadow-md shadow-indigo-600/30 transition">
+                    <i class="fa-solid fa-book-bookmark"></i><span class="hidden md:inline">문법 가이드 · 형태소 뱅크</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto p-3 sm:p-6 flex flex-col items-center justify-start relative">
+        <div id="control-bar" class="w-full flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4 bg-slate-900/80 border border-slate-800 p-2 sm:p-3 rounded-2xl backdrop-blur shadow-md">
+            <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-2">
+                <select id="mode-selector" class="bg-slate-800 text-slate-200 border border-slate-700 text-xs rounded-lg px-2 py-2 sm:py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer min-w-0" title="출제 순서">
+                    <option value="order">순서대로</option>
+                    <option value="random" selected>무작위</option>
+                </select>
+                <select id="filter-selector" onchange="onFilterChange()" class="bg-slate-800 text-slate-200 border border-slate-700 text-xs rounded-lg px-2 py-2 sm:py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer min-w-0" title="출제 유형">
+                    <option value="all">모든 유형</option>
+                    <option value="exam">★ 기출·교과서 단골</option>
+                    <option value="nested">🌳 여러 층 짜임</option>
+                    <option value="단일어">단일어</option>
+                    <option value="통사적 합성어">통사적 합성어</option>
+                    <option value="비통사적 합성어">비통사적 합성어</option>
+                    <option value="접두 파생어">접두 파생어</option>
+                    <option value="접미 파생어">접미 파생어</option>
+                </select>
+                <select id="word-selector" onchange="loadWord(parseInt(this.value))" class="bg-slate-800 text-slate-200 border border-slate-700 text-xs sm:text-sm rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer min-w-0 sm:max-w-[190px]"></select>
+            </div>
+            <div class="grid grid-cols-5 sm:flex items-center gap-1.5 sm:gap-2">
+                <button id="btn-hints" onclick="toggleHints()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap" title="도움말 문구 켜기/끄기"><i class="fa-solid fa-lightbulb md:mr-1"></i><span class="hidden md:inline"> 도움말</span></button>
+                <button onclick="revealAnswer()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded-lg text-xs font-medium border border-amber-500/40 transition flex items-center justify-center whitespace-nowrap" title="현재 단계 정답을 보여 줍니다"><i class="fa-solid fa-key md:mr-1"></i><span class="hidden md:inline"> 정답</span></button>
+                <button onclick="prevWord()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap" title="이전 단어"><i class="fa-solid fa-chevron-left md:mr-1"></i><span class="hidden md:inline"> 이전</span></button>
+                <button onclick="resetCurrentPuzzle()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap" title="이 단어 처음부터"><i class="fa-solid fa-rotate-right md:mr-1"></i><span class="hidden md:inline"> 초기화</span></button>
+                <button onclick="nextWord()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition flex items-center justify-center shadow-md whitespace-nowrap" title="다음 단어"><span class="hidden md:inline">다음 단어 </span><i class="fa-solid fa-chevron-right md:ml-1"></i></button>
+            </div>
+        </div>
+
+        <div id="start-screen" class="w-full hidden"></div>
+        <div id="phase-bar" class="w-full bg-slate-900/60 border border-slate-800 p-2 sm:p-3 rounded-xl mb-4 sm:mb-6 flex items-center justify-around text-xs sm:text-sm gap-2"></div>
+        <div id="engine-warning" class="hidden w-full mb-4 bg-rose-950/60 border border-rose-500/50 rounded-xl p-3 text-xs text-rose-200"></div>
+        <div id="app-container" class="w-full flex flex-col items-center space-y-4 sm:space-y-6"></div>
+    </main>
+
+    <div id="explanation-modal" onclick="if(event.target===this)closeExplanationModal()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-rose-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl shadow-rose-950/50">
+            <div class="flex items-center space-x-3 mb-3 text-rose-400">
+                <div class="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg font-bold"><i class="fa-solid fa-circle-xmark"></i></div>
+                <div><h3 class="font-bold text-lg text-slate-100">다시 생각해 볼까요?</h3><p class="text-xs text-rose-300/80">선택이 문법 규칙과 맞지 않습니다.</p></div>
+            </div>
+            <div class="bg-slate-950/70 rounded-xl p-4 border border-slate-800 my-4 text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line max-h-[50vh] overflow-y-auto" id="modal-explanation-text"></div>
+            <button onclick="closeExplanationModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl font-medium text-xs sm:text-sm transition">다시 시도하기</button>
+        </div>
+    </div>
+
+    <div id="guide-modal" onclick="if(event.target===this)closeGuide()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+                <div class="flex items-center space-x-2.5"><i class="fa-solid fa-book-bookmark text-indigo-400 text-lg"></i><h3 class="font-bold text-slate-100 text-base">단어의 짜임 요약 · 형태소 뱅크</h3></div>
+                <button onclick="closeGuide()" class="text-slate-400 hover:text-slate-200 text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm text-slate-300 leading-relaxed" id="guide-body"></div>
+            <div class="px-6 py-3 border-t border-slate-800 bg-slate-950 text-right"><button onclick="closeGuide()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">닫기</button></div>
+        </div>
+    </div>
+
+    <div id="theme-modal" onclick="if(event.target===this)closeThemeModal()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between"><h3 class="font-bold text-slate-100 text-base"><i class="fa-solid fa-palette text-indigo-400 mr-2"></i>디자인 테마 고르기</h3><button onclick="closeThemeModal()" class="text-slate-400 hover:text-slate-200 text-lg p-1"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="theme-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+            <p class="text-[11px] text-slate-500">고른 테마는 이 브라우저에 저장됩니다. 언제든 헤더의 팔레트 버튼으로 바꿀 수 있어요.</p>
+        </div>
+    </div>
+
+    <div id="rank-modal" onclick="if(event.target===this)closeRanking()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-slate-100 text-base"><i class="fa-solid fa-ranking-star text-amber-400 mr-2"></i>랭킹</h3>
+                <button onclick="closeRanking()" class="text-slate-400 hover:text-slate-200 text-lg p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="rank-body" class="p-5 overflow-y-auto text-xs sm:text-sm text-slate-300 space-y-3"></div>
+        </div>
+    </div>
+
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-3 px-4 text-center text-xs text-slate-500">
+        <p>단어의 짜임 연습 • 형태소를 나누고 단어가 만들어진 방법을 분류하는 국어 문법 연습</p>
+    </footer>
+
+<script>
+/* =====================================================================
+   랭킹 서버 주소 (Google Apps Script 웹 앱 URL). 비어 있으면 내 기록만 저장.
+   ===================================================================== */
+const RANK_API = 'https://script.google.com/macros/s/AKfycbwEU20fzO9P3VN5hk9NXReicDOu9f3N_yJi0rH5nSqNSkLf4Wo_zoi1AMOVCt4XozjZsw/exec';
+
+/* =====================================================================
+   0. 유틸리티
+   ===================================================================== */
+function hasBatchim(s) {
+    s = String(s).replace(/-/g, '');
+    if (!s) return false;
+    const c = s.charCodeAt(s.length - 1);
+    if (c < 0xAC00 || c > 0xD7A3) return /[ㄱ-ㅎ]/.test(s[s.length - 1]);
+    return (c - 0xAC00) % 28 !== 0;
+}
+const eunNeun = s => `'${s}'${hasBatchim(s) ? '은' : '는'}`;
+const iGa    = s => `'${s}'${hasBatchim(s) ? '이' : '가'}`;
+const waGwa  = s => `'${s}'${hasBatchim(s) ? '과' : '와'}`;
+const eulReul= s => `'${s}'${hasBatchim(s) ? '을' : '를'}`;
+const stripHyphen = s => s.replace(/-/g, '');
+const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ', JUNG = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ', JONG = ' ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ';
+function jamo(ch) { const c = ch.charCodeAt(0) - 0xAC00; if (c < 0 || c > 11171) return null; return { cho: CHO[Math.floor(c / 588)], jung: JUNG[Math.floor((c % 588) / 28)], jong: JONG[c % 28].trim(), noJong: String.fromCharCode(0xAC00 + Math.floor(c / 588) * 588 + Math.floor((c % 588) / 28) * 28) }; }
+/* 글자 안에 두 형태소가 겹친 덩어리를 어떻게 나눌지 보기 만들기: 정답 + 그럴듯한 오답 */
+function innerSplitOptions(text, forms) {
+    const correct = forms.map(stripHyphen).join(' + ');
+    const opts = new Set([correct]);
+    const last = text[text.length - 1], head = text.slice(0, -1), j = jamo(last);
+    if (text.length >= 2) opts.add(`${head} + ${last}`);                       // 음절 경계에서
+    if (j) {
+        opts.add(`${head}${j.cho} + ${j.jung}${j.jong}`);                       // 초성만 떼어
+        if (j.jong) opts.add(`${head}${j.noJong} + ${j.jong}`);                 // 받침만 떼어
+        if (text.length >= 2 && j.jong) opts.add(`${head} + ${j.noJong} + ${j.jong}`); // 셋으로
+    }
+    const arr = [...opts];
+    // 고정 순서로 섞기(단어마다 같은 순서): 글자 코드 합을 씨앗으로
+    let seed = [...text].reduce((a, c) => a + c.charCodeAt(0), 0);
+    for (let i = arr.length - 1; i > 0; i--) { seed = (seed * 9301 + 49297) % 233280; const k = seed % (i + 1); [arr[i], arr[k]] = [arr[k], arr[i]]; }
+    return { correct, options: arr };
+}
+const plusList = arr => arr.slice(0, -1).map(f => `'${f}'`).concat(iGa(arr[arr.length - 1])).join(' + ');
+
+/* =====================================================================
+   1. 형태소 분류 체계
+   ===================================================================== */
+const CATS = ["명사", "대명사", "수사", "관형사", "부사", "동사 어간", "형용사 어간", "어미", "접두사", "접미사"];
+const CAT = {
+    "명사":       { auto: "자립 형태소", mean: "실질 형태소", kind: "어근", test: t => `'${t}이/가', '${t}을/를'처럼 조사가 붙어 문장에 홀로 쓰일 수 있어야 명사예요.` },
+    "대명사":     { auto: "자립 형태소", mean: "실질 형태소", kind: "어근", test: t => `사람이나 사물의 이름을 대신 가리키는 말이어야 대명사예요.` },
+    "수사":       { auto: "자립 형태소", mean: "실질 형태소", kind: "어근", test: t => `수량이나 순서를 나타내는 말이어야 수사예요.` },
+    "관형사":     { auto: "자립 형태소", mean: "실질 형태소", kind: "어근", test: t => `'${t} + 명사'처럼 체언을 꾸미면서 형태가 변하지 않아야 관형사예요.` },
+    "부사":       { auto: "자립 형태소", mean: "실질 형태소", kind: "어근", test: t => `'${t}'이(가) 용언이나 문장 전체를 꾸며 주는 말이어야 부사예요.` },
+    "동사 어간":  { auto: "의존 형태소", mean: "실질 형태소", kind: "어근", test: t => `'${t}다'가 움직임을 나타내는 말이어야 동사 어간이에요.` },
+    "형용사 어간":{ auto: "의존 형태소", mean: "실질 형태소", kind: "어근", test: t => `'${t}다'가 상태나 성질을 나타내는 말이어야 형용사 어간이에요.` },
+    "어미":       { auto: "의존 형태소", mean: "형식 형태소", kind: "어미", test: t => `어간 뒤에 붙어 문장을 끝맺거나 잇거나 꾸미게 하는 문법 요소여야 어미예요.` },
+    "접두사":     { auto: "의존 형태소", mean: "형식 형태소", kind: "접사", test: t => `어근 앞에 붙어 뜻만 더하고 홀로 쓰이지 못해야 접두사예요. 혼자 쓰일 수 있다면 어근이에요.` },
+    "접미사":     { auto: "의존 형태소", mean: "형식 형태소", kind: "접사", test: t => `어근 뒤에 붙어 뜻을 더하거나 품사를 바꾸며 홀로 쓰이지 못해야 접미사예요.` },
+};
+const isStemCat = c => c === "동사 어간" || c === "형용사 어간";
+const isAffixCat = c => c === "접두사" || c === "접미사";
+
+/* =====================================================================
+   2. 형태소 뱅크 — 같은 꼴이 여럿이면 key를 'form/구분'으로 나눈다 (form은 '/' 앞부분)
+   ===================================================================== */
+const BANK = {};
+const BANK_ERRORS = [];
+function add(key, cat, gloss, extra = {}) {
+    if (BANK[key]) BANK_ERRORS.push(`형태소 키 충돌: '${key}' (${BANK[key].cat} ↔ ${cat}) — 'key/구분'으로 나누세요`);
+    const form = key.split('/')[0];
+    BANK[key] = { key, form, text: stripHyphen(form), cat, gloss, ...extra };
+}
+function addRoots(cat, list) { list.forEach(([k, g]) => add(k, cat, g)); }
+const STEM_NOTES = { '살리-': "'살리-'는 '살-'에 사동 접미사 '-리-'가 든 어간이지만, 교과서·시험에서는 하나의 어간으로 다룹니다.", '튀기-': "'튀기-'는 '튀-'에 사동 접미사 '-기-'가 든 어간이지만, 교과서·시험에서는 하나의 어간으로 다룹니다.", '모이-': "'모이-'는 '모으-'에 피동 접미사 '-이-'가 든 어간이지만, 교과서·시험에서는 하나의 어간으로 다룹니다.", '달리-': "'달리-'는 하나의 어간으로 봅니다." };
+
+addRoots("명사", [
+    ["구름","하늘에 떠 있는 물방울 덩어리"],["하늘","땅 위의 무한한 공간"],["바다","넓고 큰 짠물"],["나무","줄기와 가지가 있는 식물"],["사람","생각하고 말하는 존재"],
+    ["바람","공기의 움직임"],["노래","가락에 맞춰 부르는 것"],["어머니","엄마"],["아버지","아빠"],["무지개","비 갠 뒤 하늘의 일곱 빛깔"],["소나기","갑자기 세게 내리는 비"],
+    ["손","팔 끝 부분"],["발","다리 끝 부분"],["논","벼를 심는 땅"],["밭","곡식·채소를 심는 땅"],["팔","어깨와 손 사이"],["다리","몸을 받치는 부분"],["다리/교","물이나 길을 건너게 놓은 것"],
+    ["눈","보는 기관"],["눈/눈","하늘에서 내리는 눈"],["물","마시는 액체"],["봄","첫 번째 계절"],["비","하늘에서 내리는 물"],["돌","바위 조각"],["꽃","식물의 생식 기관"],
+    ["바늘","실을 꿰는 가는 도구"],["방석","앉을 때 까는 것"],["두꺼비","개구리 비슷한 동물"],["집","사는 곳"],["콩","콩과 식물의 씨"],["나물","먹을 수 있는 풀"],
+    ["밥","쌀을 익힌 음식"],["해","한 해, 년(年)"],["해/태양","하늘의 태양"],["사랑","아끼는 마음"],["책","글을 엮은 것"],["거리","재료, ~할 것"],["빛","밝은 것"],["앞","향하는 쪽"],
+    ["뒤","등이 향한 쪽"],["위","높은 쪽"],["아래","낮은 쪽"],["값","가격"],["고추","매운 열매"],["살구","살구나무 열매"],["신","발에 신는 것"],["아들","남자 자식"],
+    ["딸","여자 자식"],["아비","아버지의 낮춤말"],["일","해야 하는 활동"],["멋","세련된 맛"],["슬기","사리를 밝히는 지혜"],["고기","먹는 살"],["불","타는 것"],
+    ["가락","길고 가는 토막"],["목","머리와 몸을 잇는 부분, 잘록한 부분"],["길","다니는 통로"],["톱","나무를 자르는 도구"],["코","냄새 맡는 기관"],["줄","가늘고 긴 끈"],
+    ["달","밤하늘의 천체"],["터","자리, 장소"],["옷","입는 것"],["날","하루"],["쇠","쇠붙이"],["낯","얼굴"],["배","몸의 배 부분"],["주먹","쥔 손"],["말","언어"],
+    ["소리","귀에 들리는 것"],["버선","발에 신는 천"],["이불","덮는 침구"],["겨울","네 번째 계절"],["여름","두 번째 계절"],["며느리","아들의 아내"],["몸","신체"],
+    ["기름","미끄러운 액체"],["사냥","짐승을 잡는 일"],["장사","물건을 파는 일"],["심부름","시키는 일을 해 줌"],["지게","등에 지는 도구"],["가위","자르는 도구"],
+    ["삽","흙을 파는 도구"],["아이","어린 사람"],["어른","다 자란 사람"],["보람","좋은 결과에 대한 만족"],["그늘","빛이 가려진 곳"],["기침","기침 소리"],["짓","몸을 놀리는 동작"],
+    ["밤","해가 진 뒤"],["밤/열매","밤나무의 열매"],["힘","기운"],
+    ["잎","식물의 잎"],["솔","소나무"],["별","밤하늘의 별"],["샘","물이 솟는 곳"],["들","넓은 벌판"],["흙","땅의 흙"],["그릇","음식을 담는 것"],["국","국물 음식"],
+    ["쌀","벼의 알맹이"],["보리","보리 알"],["김","바다에서 나는 김"],["떡","곡식 가루로 만든 음식"],["새우","새우"],["오리","오리"],["토끼","토끼"],["개","개"],
+    ["아침","해 뜰 무렵"],["저녁","해 질 무렵"],["가을","세 번째 계절"],["등","몸의 뒷면"],["바닥","아래쪽 면"],["입","입"],["맛","혀로 느끼는 것"],["송이","꽃·열매의 한 덩이"],
+    ["술","마시는 술"],["씨름","씨름"],["구경","보고 즐김"],["떼","억지"],["빚","갚아야 할 돈"],["대장","쇠를 다루는 일"],["걸레","닦는 천"],["부채","부치는 도구"],
+    ["도둑","훔치는 사람"],["니","이(齒)"],["살","몸의 살"],["낮","해가 떠 있는 동안"],["복판","한가운데"],["누이","여자 형제"],["뜻","의미"],["돈","돈"],["귀","듣는 기관"],
+    ["젖","젖"],["때","몸의 때"],["참","진실"],["알","알맹이"],["내","냄새"],["손톱","손가락 끝의 단단한 부분"],
+    ["보름","음력 15일"],["속","안쪽"],["마음","마음"],["이슬","이슬"],["함박","크고 탐스러운 것"],["방울","둥근 액체 덩이"],["덩이","뭉친 것"],["가루","가루"],
+    ["밀","밀"],["자국","남은 흔적"],["자취","남은 흔적"],["가지","나뭇가지"],["풀","풀"],["잔디","잔디"],["모래","모래"],["밑","아래"],["혀","혀"],["솜씨","손으로 하는 재주"],
+    ["새/조","날아다니는 새"],["소금","소금"],["꿀","꿀"],["미역","미역"],["마디","말의 한 토막"],["색시","새로 시집온 여자"],["씨","씨앗"],["침","침"],["숯","숯"],["깨","깨"],
+    ["곱","곱하기"],["짐","짐"],["장난","장난"],["곁","옆"],["칼","칼"],["빗","머리 빗는 도구"],["붓","붓"],["턱","턱"],["하루","하루"],["애","마음과 힘"],["숨","숨"],["할머니","할머니"],["남","다른 사람"],["기러기","기러기"],["배/과일","배나무 열매"],["미나리","미나리"],["꼬마","어린아이"],["개미","개미"],["버섯","버섯"],["짐승","짐승"],["언니","언니"],["생각","생각"],["걱정","걱정"],["털","털"],["철","분별력"],["멍","멍"],["끝","마지막"],["땅","땅"],["어미","어머니의 낮춤말"],["겹","겹"],["빨래","빨래"],["글","글"],
+]);
+addRoots("대명사", [["우리","말하는 이와 그 무리"],["너","듣는 사람"],["저","말하는 이의 낮춤"]]);
+addRoots("수사", [["둘","2"],["셋","3"],["넷","4"]]);
+addRoots("관형사", [["새","새로운"],["첫","맨 처음의"],["헌","낡은"],["오른","오른쪽의"],["왼","왼쪽의"],["옛","지나간 때의"],["딴","다른"],["온","전부의"]]);
+addRoots("부사", [["그만","더 하지 않고"],["바로","곧게, 올바르게"],["잘","좋고 훌륭하게"],["못","할 수 없게"],["글썽","눈물이 고이는 모양"],["일찍","이르게"],["더욱","한층 더"],["곰곰","깊이 생각하는 모양"],["가로","옆으로"],["곧이","그대로 믿어"],["반짝","빛이 잠깐 나는 모양"],["출렁","물이 흔들리는 모양"],["끄덕","고개를 아래위로 움직이는 모양"]]);
+addRoots("동사 어간", [
+    ["먹-","음식을 삼키다"],["읽-","글을 보고 뜻을 알다"],["달리-","빨리 뛰어가다"],["들-","안으로 향하다, 가지다"],["가-","이동하다"],["돌-","방향을 바꾸다"],
+    ["오-","이쪽으로 이동하다"],["뛰-","빠르게 움직이다"],["나-","생기다, 나타나다"],["서-","일어서다, 위치하다"],["두-","놓다"],["잡-","쥐다"],["덮-","위를 씌우다"],
+    ["오르-","위로 가다"],["내리-","아래로 가다"],["밟-","발로 누르다"],["솟-","위로 오르다"],["찾-","구하다"],["듣-","소리를 알아차리다"],["감-","둘러 말다"],
+    ["밀-","힘을 주어 옮기다"],["깨-","부수다"],["지우-","없애다"],["날-","공중을 움직이다"],["베-","머리 밑에 받치다"],["웃-","기쁨을 얼굴에 나타내다"],
+    ["믿-","그렇다고 여기다"],["얼-","액체가 고체가 되다"],["볶-","기름에 익히다"],["알-","깨달아 이해하다"],["입-","옷을 몸에 걸치다"],["생기-","새로 나타나다"],
+    ["굶-","먹지 못하다"],["주리-","배를 곯다"],["꺾-","구부려 부러뜨리다"],["헐-","깎아내리다"],["뜯-","잡아떼다"],["싸-/동","둘러 가리다"],["누르-","위에서 힘을 주다"],
+    ["끓-","물이 뜨거워 솟다"],["보-","눈으로 알다"],["젓-","휘저어 섞다"],["부딪-","세게 마주 닿다"],["넘-","경계를 지나다"],["깎-","겉을 얇게 벗기다"],["돋-","솟아 나오다"],
+    ["맞-","오는 것을 대하다"],["꽂-","박아 세우다"],["배우-","지식을 얻다"],["울-","슬퍼 소리 내다"],["죽-","목숨이 끊어지다"],["놀-","즐겁게 지내다"],["열-","닫힌 것을 트다"],
+    ["갈-","바꾸다"],
+    ["곯-","배가 비다"],["피-","꽃이 벌어지다"],["스미-","배어들다"],["남-","뒤에 남다"],["붙-","달라붙다"],["늘-","많아지다"],["줄-","적어지다"],["채-","알아차리다"],
+    ["끌-","당기다"],["집-","손으로 잡다"],["넣-","안에 들이다"],["안-","품에 두다"],["지키-","보살피다"],["기-","엎드려 움직이다"],["뜨-","위로 솟다"],["새기-","마음에 두다"],
+    ["몰-","한쪽으로 밀다"],["뿜-","내보내다"],["디디-","발로 밟다"],["세-/동","수를 헤아리다"],["빼-","덜어 내다"],["그리-","모양을 나타내다"],["꾸미-","모양을 내다"],["느끼-","마음으로 알다"],
+    ["묶-","한데 매다"],["바라-","쳐다보다"],["나누-","가르다"],["씻-","물로 닦다"],["비-","속이 없다"],["되-/동","어떤 상태가 되다"],["대-","맞추어 놓다, 견주다"],["갈기-","마구 치다"],["벗-","몸에서 떼어 내다"],["데리-","함께 있게 하다"],["내-/동","밖으로 나가게 하다"],["부시-","빛이 강해 눈이 어리다"],["타-/불","불이 붙다"],["막-","가로막다"],["뜨-/편","실로 옷감을 만들다"],["살리-","살게 하다"],["튀기-","기름에 넣어 익히다"],["모이-","한곳에 오다"],
+    ["자-","잠을 자다"],["꾸-","꿈을 꾸다"],["추-","춤을 추다"],["비비-","문질러 섞다"],["싸우-","다투다"],["갈리-","나뉘다"],["지르-","가로질러 가다"],
+    ["무치-","양념에 버무리다"],["조리-","국물에 졸이다"],["졸-","잠이 오다"],["던지-","팔로 날리다"],["걷-","다리로 나아가다"],["쓰-","글을 적다"],
+    ["걸-","매달다"],["더듬-","손으로 찾다"],["벌-","돈을 얻다"],["익-","열매·음식이 여물다"],["삶-","물에 넣고 끓이다"],["쑤시-","쿡쿡 찌르다"],["뭉개-","눌러 짓이기다"],
+    ["받-","받다"],["닫-","달려가다"],["묻-","물어보다"],["팔-","값을 받고 주다"],["두르-","휘돌리다"],["섞-","한데 합치다"],["엎-","뒤집다"],["흔들-","흔들다"],["바꾸-","바꾸다"],
+    ["쫓-","내몰다"],["빠-","물에 빠지다"],["얽-","얽다"],["매-","묶다"],["살-","생명을 지니다"],["일-","일어나다, 생기다"],["타-","탈것에 오르다"],["얻-","받아 가지다"],["가리-","보이지 않게 막다"],["깔-","바닥에 펴 놓다"],
+]);
+addRoots("형용사 어간", [
+    ["크-","부피·길이가 많다"],["검-","빛깔이 어둡다"],["붉-","피와 같은 빛깔이다"],["높-","위로 멀다"],["푸르-","풀빛과 같다"],["파랗-","맑은 하늘빛이다"],["싸-","값이 낮다"],
+    ["까맣-","매우 검다"],["커멓-","어둡게 검다"],["넓-","면적이 크다"],["좁-","면적이 작다"],["많-","수효가 크다"],["없-","존재하지 않다"],["기쁘-","마음이 즐겁다"],
+    ["슬프-","마음이 아프다"],["설-","익숙하지 않다"],["부르-","배가 차다"],
+    ["짙-","빛깔이 진하다"],["세-","힘이 많다"],["비싸-","값이 높다"],["차-/형","가득하다"],["차-/냉","온도가 낮다"],["누렇-","누런빛이다"],["노랗-","노란빛이다"],["궂-","언짢고 나쁘다"],["게으르-","부지런하지 않다"],["아프-","고통스럽다"],["다르-","같지 않다"],["하얗-","희다"],["빨갛-","붉다"],["퍼렇-","푸르다"],["뻘겋-","붉다"],["굵-","둘레가 크다"],["멀-","거리가 있다"],
+]);
+
+const addEnding = (k, role, g) => add(k, "어미", g, { role });
+addEnding("-다", "종결 어미", "말을 끝맺는 기본형 꼴");
+addEnding("-어", "연결 어미", "앞 동작을 뒤 동작에 이어 줌");
+addEnding("-아", "연결 어미", "앞 동작을 뒤 동작에 이어 줌");
+addEnding("-고", "연결 어미", "앞 동작과 뒤 동작을 이어 줌");
+addEnding("-을", "관형사형 어미", "앞말이 뒤의 이름씨를 꾸미게 함");
+addEnding("-ㄴ", "관형사형 어미", "앞말이 뒤의 이름씨를 꾸미게 함 (앞 글자 받침으로 붙음)");
+addEnding("-ㄹ", "관형사형 어미", "앞말이 뒤의 이름씨를 꾸미게 함 (앞 글자 받침으로 붙음)");
+
+const addPrefix = (k, g) => add(k, "접두사", g, { fn: "한정적 접사" });
+addPrefix("풋-", "'덜 익은, 미숙한'"); addPrefix("맨-", "'다른 것이 없는'"); addPrefix("개-", "'야생의, 질이 떨어지는, 헛된'"); addPrefix("덧-", "'겹쳐 더하는'");
+addPrefix("새-", "'매우 짙고 선명하게'"); addPrefix("시-", "'매우 짙고 선명하게(어두운 계열)'"); addPrefix("드-", "'심하게, 높이'"); addPrefix("짓-", "'마구, 함부로'");
+addPrefix("치-", "'위로 향하게'"); addPrefix("되-", "'도로, 다시'"); addPrefix("엿-", "'몰래'"); addPrefix("휘-", "'마구, 세게'"); addPrefix("맏-", "'첫째'");
+addPrefix("홀-", "'짝이 없는'"); addPrefix("시-/가족", "'남편 쪽의'"); addPrefix("헛-", "'보람 없는, 이유 없는'"); addPrefix("군-", "'쓸데없는'");
+addPrefix("한-", "'한창인'"); addPrefix("알-/접", "'겉을 덮은 것이 없는'"); addPrefix("참-", "'진짜, 품질이 좋은'"); addPrefix("날-/접", "'익히지 않은'");
+addPrefix("들-/접", "'마구, 몹시'"); addPrefix("홑-", "'한 겹의'"); addPrefix("샛-", "'매우 짙고 선명하게'"); addPrefix("싯-", "'매우 짙고 선명하게(어두운 계열)'"); addPrefix("외-", "'하나뿐인, 혼자인'");
+addPrefix("돌-/접", "'야생의, 품질이 낮은'"); addPrefix("땅-/접", "'몹시 작은'"); addPrefix("불-/접", "'붉은'");
+addPrefix("뒤-", "'마구, 온통'"); addPrefix("내-", "'밖으로, 힘껏'"); addPrefix("웃-/접", "'위'"); addPrefix("빗-", "'잘못, 기울게'"); addPrefix("설-/접", "'충분하지 못하게'"); addPrefix("맞-/접", "'마주'");
+
+const addSuffix = (k, fn, g, change) => add(k, "접미사", g, { fn, change });
+addSuffix("-꾼",   "한정적 접사", "'어떤 일을 잘하거나 직업으로 하는 사람'", "명사 → 명사");
+addSuffix("-쟁이", "한정적 접사", "'그 속성을 많이 가진 사람'", "명사 → 명사");
+addSuffix("-들",   "한정적 접사", "'복수(여럿)'", "체언 → 체언");
+addSuffix("-희",   "한정적 접사", "'복수(여럿)'", "대명사 → 대명사");
+addSuffix("-째",   "한정적 접사", "'차례'", "수사 → 수사");
+addSuffix("-질",   "한정적 접사", "'그 도구를 가지고 하는 일'", "명사 → 명사");
+addSuffix("-치-",  "한정적 접사", "'힘줌(강조)'", "동사 → 동사");
+addSuffix("-뜨리-","한정적 접사", "'힘줌(강조)'", "동사 → 동사");
+addSuffix("-다랗-","한정적 접사", "'그 정도가 꽤 심함'", "형용사 → 형용사");
+addSuffix("-개",   "지배적 접사", "'~하는 도구'", "동사 어간 → 명사");
+addSuffix("-기",   "지배적 접사", "'~하는 일'", "용언 어간 → 명사");
+addSuffix("-음",   "지배적 접사", "'~하는 것, 상태'", "용언 어간 → 명사");
+addSuffix("-ㅁ",   "지배적 접사", "'~하는 것, 상태' (앞 글자 받침으로 붙음)", "용언 어간 → 명사");
+addSuffix("-이",   "지배적 접사", "'~하는 것, 행위, 정도'", "어간(어근) → 명사");
+addSuffix("-이/부","지배적 접사", "'~하게'", "형용사 어간 → 부사");
+addSuffix("-이-",  "지배적 접사", "'그런 모양으로 움직이다'", "부사 → 동사");
+addSuffix("-지-",  "지배적 접사", "'그러한 성질이 있다'", "명사 → 형용사");
+addSuffix("-답-",  "지배적 접사", "'그 성질을 충분히 지니다'", "명사 → 형용사");
+addSuffix("-롭-",  "지배적 접사", "'그러함, 그럴 만함'", "명사 → 형용사");
+addSuffix("-차-",  "지배적 접사", "'그것이 가득하다'", "명사 → 형용사");
+addSuffix("-하-",  "지배적 접사", "'~을 행하다'", "명사 → 동사");
+addSuffix("-꾸러기","한정적 접사", "'그것이 심하거나 많은 사람'", "명사 → 명사");
+addSuffix("-장이", "한정적 접사", "'그 기술을 가진 사람'", "명사 → 명사");
+addSuffix("-님",   "한정적 접사", "'높임'", "명사 → 명사");
+addSuffix("-보",   "지배적 접사", "'그것을 잘하는 사람'", "동사 어간 → 명사");
+addSuffix("-둥이", "지배적 접사", "'그러한 성질의 사람·동물'", "형용사 어간 → 명사");
+addSuffix("-리",   "지배적 접사", "'~하게'", "형용사 어간 → 부사");
+addSuffix("-대-",  "지배적 접사", "'그런 모양으로 자꾸 움직이다'", "부사 → 동사");
+addSuffix("-이/부한","한정적 접사", "'뜻을 강조함'", "부사 → 부사");
+addSuffix("-보/한","한정적 접사", "'그것이 심한 사람'", "명사 → 명사");
+addSuffix("-씨",   "한정적 접사", "'그 상태나 태도'", "명사 → 명사");
+addSuffix("-새",   "한정적 접사", "'모양, 됨됨이'", "명사 → 명사");
+
+/* =====================================================================
+   3. 조립 레시피 — 실제 있는 단어를 직접 구성 요소로 적는다
+      parts: 마지막에 결합한 두 부분. 문자열=뱅크 형태소, {ref}=다른 레시피 단어, {grp:[...]}=합성 어근(단어 아님)
+      어간+어미+X 는 [어간, 어미, X] 세 개로 적으면 엔진이 [어간+어미]+[X]로 묶는다
+      ending: 용언 기본형 어미 / rel·relNote: 합성어 의미 관계 / chunks: 한 글자에 두 형태소가 겹칠 때 / exam: 기출·교과서 단골
+   ===================================================================== */
+const N = (word, gloss, parts, extra = {}) => ({ word, pos: "명사", gloss, parts, ...extra });
+const PR= (word, gloss, parts, extra = {}) => ({ word, pos: "대명사", gloss, parts, ...extra });
+const NU= (word, gloss, parts, extra = {}) => ({ word, pos: "수사", gloss, parts, ...extra });
+const AD= (word, gloss, parts, extra = {}) => ({ word, pos: "부사", gloss, parts, ...extra });
+const V = (word, gloss, parts, extra = {}) => ({ word, pos: "동사", gloss, parts, ending: "-다", ...extra });
+const A = (word, gloss, parts, extra = {}) => ({ word, pos: "형용사", gloss, parts, ending: "-다", ...extra });
+const 대등 = note => ({ rel: "대등 합성어", relNote: note });
+const 종속 = note => ({ rel: "종속 합성어", relNote: note });
+const 융합 = note => ({ rel: "융합 합성어", relNote: note });
+const X = { exam: true };
+
+const RECIPES = [
+    /* ---------- 단일어 ---------- */
+    N("구름", "하늘에 떠 있는 물방울 덩어리", ["구름"], X),
+    N("하늘", "땅 위의 무한한 공간", ["하늘"]),
+    N("바다", "넓고 큰 짠물", ["바다"]),
+    N("나무", "줄기와 가지가 있는 식물", ["나무"]),
+    N("사람", "생각하고 말하는 존재", ["사람"]),
+    N("어머니", "엄마", ["어머니"]),
+    N("무지개", "비 갠 뒤 하늘의 일곱 빛깔", ["무지개"], X),
+    N("소나기", "갑자기 세게 내리는 비", ["소나기"]),
+    N("손톱", "손가락 끝의 단단한 부분", ["손톱"], X),
+    V("먹다", "음식을 삼키다", ["먹-"], X),
+    V("읽다", "글을 보고 뜻을 알다", ["읽-"]),
+    A("높다", "위로 멀다", ["높-"]),
+
+    /* ---------- 통사적 합성어: 명사 + 명사 ---------- */
+    N("손발", "손과 발", ["손", "발"], { ...대등("'손'과 '발'이 대등하게 결합해 '손과 발'을 뜻합니다."), ...X }),
+    N("논밭", "논과 밭", ["논", "밭"], { ...대등("'논'과 '밭'이 대등하게 결합해 '논과 밭'을 뜻합니다."), ...X }),
+    N("팔다리", "팔과 다리", ["팔", "다리"], 대등("'팔'과 '다리'가 대등하게 결합해 '팔과 다리'를 뜻합니다.")),
+    N("앞뒤", "앞과 뒤", ["앞", "뒤"], 대등("'앞'과 '뒤'가 대등하게 결합해 '앞과 뒤'를 뜻합니다.")),
+    N("위아래", "위와 아래", ["위", "아래"], 대등("'위'와 '아래'가 대등하게 결합해 '위와 아래'를 뜻합니다.")),
+    N("아들딸", "아들과 딸", ["아들", "딸"], 대등("'아들'과 '딸'이 대등하게 결합해 '아들과 딸'을 뜻합니다.")),
+    N("눈물", "눈에서 나오는 액체", ["눈", "물"], { ...종속("'눈에서 나오는 물'로, 앞 어근 '눈'이 뒤 어근 '물'을 꾸며 줍니다."), ...X }),
+    N("봄비", "봄에 오는 비", ["봄", "비"], { ...종속("'봄에 내리는 비'로, '봄'이 '비'를 꾸며 줍니다."), ...X }),
+    N("돌다리", "돌로 놓은 다리", ["돌", "다리/교"], { ...종속("'돌로 만든 다리'로, '돌'이 '다리'를 꾸며 줍니다."), ...X }),
+    N("꽃밭", "꽃을 심은 밭", ["꽃", "밭"], 종속("'꽃을 심은 밭'으로, '꽃'이 '밭'을 꾸며 줍니다.")),
+    N("물고기", "물에 사는 고기", ["물", "고기"], 종속("'물에 사는 고기'로, '물'이 '고기'를 꾸며 줍니다.")),
+    N("불고기", "불에 구운 고기", ["불", "고기"], 종속("'불에 구워 먹는 고기'로, '불'이 '고기'를 꾸며 줍니다.")),
+    N("밤나무", "밤이 열리는 나무", ["밤/열매", "나무"], 종속("'밤이 열리는 나무'로, '밤'이 '나무'를 꾸며 줍니다.")),
+    N("손가락", "손 끝의 가락", ["손", "가락"], 종속("'손에 달린 가락'으로, '손'이 '가락'을 꾸며 줍니다.")),
+    N("발가락", "발 끝의 가락", ["발", "가락"], 종속("'발에 달린 가락'으로, '발'이 '가락'을 꾸며 줍니다.")),
+    N("손목", "손과 팔이 이어지는 부분", ["손", "목"], 종속("'손의 목(잘록한 부분)'으로, '손'이 '목'을 꾸며 줍니다.")),
+    N("봄바람", "봄에 부는 바람", ["봄", "바람"], 종속("'봄에 부는 바람'으로, '봄'이 '바람'을 꾸며 줍니다.")),
+    N("밤길", "밤에 다니는 길", ["밤", "길"], 종속("'밤에 걷는 길'로, '밤'이 '길'을 꾸며 줍니다.")),
+    N("손짓", "손을 놀려 하는 동작", ["손", "짓"], 종속("'손으로 하는 짓(동작)'으로, '손'이 '짓'을 꾸며 줍니다. '짓'은 홀로 쓰이는 명사입니다.")),
+    N("몸짓", "몸을 놀려 하는 동작", ["몸", "짓"], 종속("'몸으로 하는 짓(동작)'으로, '몸'이 '짓'을 꾸며 줍니다.")),
+    N("눈짓", "눈으로 하는 신호", ["눈", "짓"], 종속("'눈으로 하는 짓'으로, '눈'이 '짓'을 꾸며 줍니다.")),
+    N("바늘방석", "앉아 있기 몹시 불편한 자리", ["바늘", "방석"], { ...융합("'바늘로 만든 방석'이 아니라 '불안하고 불편한 자리'라는 제3의 새로운 뜻이 생겼습니다."), ...X }),
+    N("두꺼비집", "전기 개폐기(차단기)", ["두꺼비", "집"], 융합("'두꺼비가 사는 집'이 아니라 '전기 개폐기'라는 전혀 새로운 뜻이 되었습니다.")),
+
+    /* ---------- 통사적 합성어: 여러 층 (안쪽에 단어가 또 있음) ---------- */
+    N("콩나물", "콩을 길러 키운 나물", ["콩", "나물"], 종속("'콩에서 자란 나물'로, '콩'이 '나물'을 꾸며 줍니다.")),
+    N("콩나물밥", "콩나물을 넣어 지은 밥", [{ ref: "콩나물" }, "밥"], { ...종속("'콩나물을 넣어 지은 밥'으로, '콩나물'이 '밥'을 꾸며 줍니다."), ...X }),
+    N("볶음", "볶은 음식", ["볶-", "-음"]),
+    N("볶음밥", "밥을 볶아 만든 음식", [{ ref: "볶음" }, "밥"], { ...종속("'볶은 밥'으로, '볶음'이 '밥'을 꾸며 줍니다."), ...X }),
+    N("웃음", "웃는 일이나 소리", ["웃-", "-음"], X),
+    N("눈웃음", "눈으로 웃는 웃음", ["눈", { ref: "웃음" }], 종속("'눈으로 웃는 웃음'으로, '눈'이 '웃음'을 꾸며 줍니다.")),
+    N("코웃음", "코로 비웃는 웃음", ["코", { ref: "웃음" }], 종속("'코로 웃는 웃음'으로, '코'가 '웃음'을 꾸며 줍니다.")),
+    N("놀이", "노는 일", ["놀-", "-이"]),
+    N("물놀이", "물에서 노는 놀이", ["물", { ref: "놀이" }], { ...종속("'물에서 하는 놀이'로, '물'이 '놀이'를 꾸며 줍니다."), ...X }),
+    N("불놀이", "불을 가지고 노는 놀이", ["불", { ref: "놀이" }], 종속("'불을 가지고 하는 놀이'로, '불'이 '놀이'를 꾸며 줍니다.")),
+    N("놀이터", "노는 자리", [{ ref: "놀이" }, "터"], 종속("'놀이를 하는 터(자리)'로, '놀이'가 '터'를 꾸며 줍니다.")),
+    N("배움", "배우는 일", ["배우-", "-ㅁ"], { chunks: [{ text: "배움", m: ["배우-", "-ㅁ"] }] }),
+    N("배움터", "배우는 곳", [{ ref: "배움" }, "터"], { ...종속("'배움이 이루어지는 터'로, '배움'이 '터'를 꾸며 줍니다."), chunks: [{ text: "배움", m: ["배우-", "-ㅁ"] }, { text: "터", m: ["터"] }] }),
+
+    /* ---------- 통사적 합성어: 관형사 + 명사 ---------- */
+    N("새해", "새로 시작되는 해", ["새", "해"], { ...종속("'새로운 해'로, 관형사 '새'가 '해'를 꾸며 줍니다."), ...X }),
+    N("새옷", "새로 지은 옷", ["새", "옷"], 종속("'새로운 옷'으로, 관형사 '새'가 '옷'을 꾸며 줍니다.")),
+    N("첫눈", "그해 처음 내리는 눈", ["첫", "눈/눈"], { ...종속("'처음 내리는 눈'으로, 관형사 '첫'이 '눈'을 꾸며 줍니다."), ...X }),
+    N("첫사랑", "처음 하는 사랑", ["첫", "사랑"], { ...종속("'처음 하는 사랑'으로, 관형사 '첫'이 '사랑'을 꾸며 줍니다."), ...X }),
+    N("첫날", "첫 번째 날", ["첫", "날"], 종속("'처음 되는 날'로, 관형사 '첫'이 '날'을 꾸며 줍니다.")),
+    N("헌책", "낡은 책", ["헌", "책"], 종속("'낡은 책'으로, 관형사 '헌'이 '책'을 꾸며 줍니다.")),
+    N("헌옷", "낡은 옷", ["헌", "옷"], 종속("'낡은 옷'으로, 관형사 '헌'이 '옷'을 꾸며 줍니다.")),
+
+    /* ---------- 통사적 합성어: 어간 + 연결 어미 + 어간 ---------- */
+    V("들어가다", "안으로 가다", ["들-", "-어", "가-"], { ...종속("'들어서 가다'로, 앞부분 '들어'가 뒤 동작 '가다'의 방식을 한정합니다."), ...X }),
+    V("돌아오다", "본래 자리로 오다", ["돌-", "-아", "오-"], { ...종속("'돌아서 오다'로, 앞부분 '돌아'가 뒤 동작 '오다'를 한정합니다."), ...X }),
+    V("뛰어가다", "뛰면서 가다", ["뛰-", "-어", "가-"], 종속("'뛰어서 가다'로, 앞부분 '뛰어'가 뒤 동작 '가다'의 방식을 한정합니다.")),
+    V("뛰어들다", "뛰어서 안으로 들어가다", ["뛰-", "-어", "들-"], 종속("'뛰어서 들다'로, 앞부분 '뛰어'가 뒤 동작 '들다'의 방식을 한정합니다.")),
+    V("알아듣다", "듣고 이해하다", ["알-", "-아", "듣-"], { ...종속("'알아서(이해하며) 듣다'로, 앞부분 '알아'가 뒤 동작 '듣다'를 한정합니다."), ...X }),
+    V("갈아입다", "옷을 바꾸어 입다", ["갈-", "-아", "입-"], 종속("'갈아서 입다'로, 앞부분 '갈아'가 뒤 동작 '입다'의 방식을 한정합니다.")),
+    V("잡아먹다", "잡아서 먹다", ["잡-", "-아", "먹-"], 종속("'잡아서 먹다'로, 앞부분 '잡아'가 뒤 동작 '먹다'의 방식을 한정합니다.")),
+
+    /* ---------- 통사적 합성어: 어간 + 관형사형 어미 + 명사 ---------- */
+    N("먹을거리", "먹을 만한 음식 재료", ["먹-", "-을", "거리"], { ...종속("'먹을 만한 거리(재료)'로, 앞부분 '먹을'이 '거리'를 꾸며 줍니다."), ...X }),
+    N("큰아버지", "아버지의 형", ["크-", "-ㄴ", "아버지"], { ...종속("'큰(맏이인) 아버지'로, 앞부분 '큰'이 '아버지'를 꾸며 줍니다."), ...X,
+        chunks: [{ text: "큰", m: ["크-", "-ㄴ"] }, { text: "아버지", m: ["아버지"] }] }),
+    N("열쇠", "자물쇠를 여는 쇠", ["열-", "-ㄹ", "쇠"], { ...종속("'열 수 있는 쇠'로, 앞부분 '열'이 '쇠'를 꾸며 줍니다."), ...X,
+        chunks: [{ text: "열", m: ["열-", "-ㄹ"] }, { text: "쇠", m: ["쇠"] }] }),
+
+    /* ---------- 통사적 합성어: 명사 + 용언 어간 / 부사 + 용언 어간 ---------- */
+    V("빛나다", "빛이 환하게 비치다", ["빛", "나-"], { ...종속("'빛이 나다'라는 주어+서술어 구성으로, '빛'이 '나다'의 주체를 한정합니다."), ...X }),
+    V("앞서다", "앞에 서다", ["앞", "서-"], { ...종속("'앞에 서다'라는 부사어+서술어 구성으로, '앞'이 '서다'의 위치를 한정합니다."), ...X }),
+    A("값싸다", "값이 싸다", ["값", "싸-"], 종속("'값이 싸다'라는 주어+서술어 구성으로, '값'이 '싸다'의 주체를 한정합니다.")),
+    A("낯설다", "익숙하지 않다", ["낯", "설-"], { ...종속("'낯이 설다'라는 주어+서술어 구성으로, '낯'이 '설다'의 주체를 한정합니다."), ...X }),
+    A("배부르다", "배가 차다", ["배", "부르-"], 종속("'배가 부르다'라는 주어+서술어 구성으로, '배'가 '부르다'의 주체를 한정합니다.")),
+    V("그만두다", "하던 일을 그치다", ["그만", "두-"], { ...종속("'그만 두다'로, 부사 '그만'이 뒤 동작 '두다'를 꾸며 줍니다."), ...X }),
+    V("바로잡다", "굽은 것을 곧게 하다", ["바로", "잡-"], 종속("'바로(곧게) 잡다'로, 부사 '바로'가 뒤 동작 '잡다'를 꾸며 줍니다.")),
+    V("잘생기다", "얼굴이 훤하다", ["잘", "생기-"], 종속("'잘 생기다'로, 부사 '잘'이 뒤 동작 '생기다'를 꾸며 줍니다.")),
+
+    /* ---------- 비통사적 합성어 ---------- */
+    N("덮밥", "밥 위에 반찬을 얹은 음식", ["덮-", "밥"], { ...종속("'덮은 밥'의 뜻으로, 어간 '덮-'이 명사 '밥'을 꾸며 줍니다."), ...X }),
+    N("꺾쇠", "꺾어 만든 쇠", ["꺾-", "쇠"], { ...종속("'꺾은 쇠'의 뜻으로, 어간 '꺾-'이 명사 '쇠'를 꾸며 줍니다."), ...X }),
+    V("오가다", "오고 가다", ["오-", "가-"], { ...대등("'오고 가다'로, 두 동작이 대등하게 이어집니다."), ...X }),
+    V("굶주리다", "먹지 못해 배를 곯다", ["굶-", "주리-"], { ...대등("'굶고 주리다'로, 두 동작이 대등하게 이어집니다."), ...X }),
+    V("날뛰다", "날고 뛰다", ["날-", "뛰-"], { ...대등("'날고 뛰다'로, 두 동작이 대등하게 이어집니다."), ...X }),
+    V("헐뜯다", "남을 깎아내려 말하다", ["헐-", "뜯-"], 대등("'헐고 뜯다'로, 두 동작이 대등하게 이어집니다.")),
+    V("감싸다", "둘러 가려 덮다", ["감-", "싸-/동"], 대등("'감고 싸다'로, 두 동작이 대등하게 이어집니다.")),
+    A("검붉다", "검은빛을 띠면서 붉다", ["검-", "붉-"], { ...대등("'검고 붉다'로, 두 상태가 대등하게 이어집니다."), ...X }),
+    A("검푸르다", "검은빛을 띠면서 푸르다", ["검-", "푸르-"], 대등("'검고 푸르다'로, 두 상태가 대등하게 이어집니다.")),
+    A("높푸르다", "높고 푸르다", ["높-", "푸르-"], 대등("'높고 푸르다'로, 두 상태가 대등하게 이어집니다.")),
+
+    /* ---------- 접두 파생어 ---------- */
+    N("풋사랑", "어려서 하는 서툰 사랑", ["풋-", "사랑"], X),
+    N("풋고추", "덜 익은 푸른 고추", ["풋-", "고추"]),
+    N("맨손", "아무것도 끼지 않은 손", ["맨-", "손"], X),
+    N("맨발", "아무것도 신지 않은 발", ["맨-", "발"]),
+    N("맨주먹", "아무것도 들지 않은 주먹", ["맨-", "주먹"]),
+    N("개살구", "맛이 떫은 야생 살구", ["개-", "살구"], X),
+    N("개꿈", "쓸데없는 꿈", ["개-", { ref: "꿈" }], { chunks: [{ text: "개", m: ["개-"] }, { text: "꿈", m: ["꾸-", "-ㅁ"] }] }),
+    N("덧신", "신 위에 겹쳐 신는 신", ["덧-", "신"]),
+    N("덧버선", "버선 위에 겹쳐 신는 버선", ["덧-", "버선"]),
+    N("헛기침", "일부러 하는 기침", ["헛-", "기침"]),
+    N("헛웃음", "우습지 않은데 억지로 웃는 웃음", ["헛-", { ref: "웃음" }], X),
+    N("군말", "쓸데없는 말", ["군-", "말"], X),
+    N("군소리", "쓸데없는 소리", ["군-", "소리"]),
+    N("맏아들", "첫째 아들", ["맏-", "아들"]),
+    N("맏며느리", "맏아들의 아내", ["맏-", "며느리"]),
+    N("홀아비", "아내를 잃고 혼자 사는 남자", ["홀-", "아비"]),
+    N("홑이불", "한 겹으로 된 이불", ["홑-", "이불"]),
+    N("시어머니", "남편의 어머니", ["시-/가족", "어머니"]),
+    N("한겨울", "추위가 한창인 겨울", ["한-", "겨울"], X),
+    N("한여름", "더위가 한창인 여름", ["한-", "여름"]),
+    N("알몸", "아무것도 입지 않은 몸", ["알-/접", "몸"]),
+    N("참기름", "참깨로 짠 기름", ["참-", "기름"]),
+    N("참말", "사실과 같은 말", ["참-", "말"]),
+    N("날고기", "익히지 않은 고기", ["날-/접", "고기"], X),
+    A("새파랗다", "매우 파랗다", ["새-", "파랗-"], X),
+    A("새까맣다", "매우 까맣다", ["새-", "까맣-"]),
+    A("시커멓다", "매우 커멓다", ["시-", "커멓-"], X),
+    A("드높다", "매우 높다", ["드-", "높-"], X),
+    A("드넓다", "매우 넓다", ["드-", "넓-"]),
+    V("짓밟다", "함부로 마구 밟다", ["짓-", "밟-"], X),
+    V("짓누르다", "함부로 마구 누르다", ["짓-", "누르-"]),
+    V("치솟다", "위로 힘차게 솟다", ["치-", "솟-"], X),
+    V("되찾다", "다시 찾다", ["되-", "찾-"], X),
+    V("되감다", "다시 감다", ["되-", "감-"]),
+    V("엿듣다", "몰래 듣다", ["엿-", "듣-"], X),
+    V("엿보다", "몰래 보다", ["엿-", "보-"]),
+    V("휘감다", "세게 둘러 감다", ["휘-", "감-"], X),
+    V("휘젓다", "마구 젓다", ["휘-", "젓-"]),
+    V("들끓다", "마구 끓다", ["들-/접", "끓-"]),
+
+    /* ---------- 접미 파생어 (한정적) ---------- */
+    N("나무꾼", "나무를 하는 사람", ["나무", "-꾼"], X),
+    N("일꾼", "일을 하는 사람", ["일", "-꾼"]),
+    N("사냥꾼", "사냥을 하는 사람", ["사냥", "-꾼"], X),
+    N("장사꾼", "장사를 하는 사람", ["장사", "-꾼"]),
+    N("심부름꾼", "심부름을 하는 사람", ["심부름", "-꾼"]),
+    N("소리꾼", "소리를 잘하는 사람", ["소리", "-꾼"]),
+    N("지게꾼", "지게로 짐을 나르는 사람", ["지게", "-꾼"]),
+    N("멋쟁이", "멋을 잘 부리는 사람", ["멋", "-쟁이"], X),
+    N("사람들", "여러 사람", ["사람", "-들"], X),
+    N("아이들", "여러 아이", ["아이", "-들"]),
+    PR("우리들", "우리 여러 사람", ["우리", "-들"]),
+    PR("너희", "듣는 여러 사람", ["너", "-희"], X),
+    NU("둘째", "두 번째", ["둘", "-째"]),
+    N("가위질", "가위로 자르는 일", ["가위", "-질"], X),
+    N("톱질", "톱으로 켜는 일", ["톱", "-질"]),
+    N("삽질", "삽으로 파는 일", ["삽", "-질"]),
+    N("발길", "발로 걷거나 차는 움직임", ["발", "길"], 종속("'발이 가는 길'로, '발'이 '길'을 꾸며 줍니다.")),
+    N("발길질", "발로 차는 짓", [{ ref: "발길" }, "-질"], X),
+    V("밀치다", "세게 밀다", ["밀-", "-치-"], X),
+    V("부딪치다", "세게 부딪다", ["부딪-", "-치-"]),
+    V("깨뜨리다", "세게 깨다", ["깨-", "-뜨리-"]),
+    A("높다랗다", "꽤 높다", ["높-", "-다랗-"], X),
+    A("좁다랗다", "꽤 좁다", ["좁-", "-다랗-"]),
+
+    /* ---------- 접미 파생어 (지배적) ---------- */
+    N("지우개", "글씨를 지우는 도구", ["지우-", "-개"], X),
+    N("덮개", "덮는 물건", ["덮-", "-개"], X),
+    N("날개", "새·비행기가 나는 부분", ["날-", "-개"]),
+    N("베개", "머리 밑에 베는 물건", ["베-", "-개"]),
+    N("크기", "큰 정도", ["크-", "-기"], X),
+    N("달리기", "달리는 일", ["달리-", "-기"]),
+    N("읽기", "읽는 일", ["읽-", "-기"]),
+    N("믿음", "믿는 마음", ["믿-", "-음"], X),
+    N("얼음", "물이 얼어 굳은 것", ["얼-", "-음"], X),
+    N("울음", "우는 일이나 소리", ["울-", "-음"]),
+    N("죽음", "죽는 일", ["죽-", "-음"]),
+    N("기쁨", "기쁜 마음", ["기쁘-", "-ㅁ"], { chunks: [{ text: "기쁨", m: ["기쁘-", "-ㅁ"] }], ...X }),
+    N("슬픔", "슬픈 마음", ["슬프-", "-ㅁ"], { chunks: [{ text: "슬픔", m: ["슬프-", "-ㅁ"] }] }),
+    N("넓이", "넓은 정도", ["넓-", "-이"], X),
+    N("먹이", "동물이 먹는 것", ["먹-", "-이"], X),
+    N("해돋이", "해가 막 솟아오르는 때", [{ grp: ["해/태양", "돋-"] }, "-이"], X),
+    N("꽃꽂이", "꽃을 꽂아 꾸미는 일", [{ grp: ["꽃", "꽂-"] }, "-이"], X),
+    N("봄맞이", "봄을 맞이하는 일", [{ grp: ["봄", "맞-"] }, "-이"]),
+    N("달맞이", "달을 맞이하는 일", [{ grp: ["달", "맞-"] }, "-이"]),
+    N("줄넘기", "줄을 넘는 운동", [{ grp: ["줄", "넘-"] }, "-기"], X),
+    N("손톱깎이", "손톱을 깎는 도구", [{ grp: ["손톱", "깎-"] }, "-이"], X),
+    AD("많이", "많게", ["많-", "-이/부"], X),
+    AD("없이", "없게", ["없-", "-이/부"]),
+    A("멋지다", "매우 멋이 있다", ["멋", "-지-"], X),
+    A("값지다", "값이 많이 나갈 만하다", ["값", "-지-"]),
+    A("기름지다", "기름기가 많다", ["기름", "-지-"]),
+    A("그늘지다", "그늘이 생기다", ["그늘", "-지-"]),
+    A("사람답다", "사람의 도리에 맞다", ["사람", "-답-"], X),
+    A("꽃답다", "꽃처럼 아름답다", ["꽃", "-답-"]),
+    A("어른답다", "어른의 자격이 있다", ["어른", "-답-"]),
+    A("슬기롭다", "슬기가 있다", ["슬기", "-롭-"], X),
+    A("보람차다", "보람이 있다", ["보람", "-차-"]),
+    A("힘차다", "힘이 있고 씩씩하다", ["힘", "-차-"], X),
+    V("일하다", "일을 행하다", ["일", "-하-"], X),
+    V("사랑하다", "사랑을 느끼다", ["사랑", "-하-"]),
+    V("노래하다", "노래를 부르다", ["노래", "-하-"]),
+    V("반짝이다", "빛이 반짝 나다", ["반짝", "-이-"], X),
+    V("출렁이다", "물이 출렁 움직이다", ["출렁", "-이-"]),
+    V("끄덕이다", "고개를 끄덕 움직이다", ["끄덕", "-이-"]),
+
+    /* ======== 확장 2차 ======== */
+    /* 한 글자 안쪽 단어(문제로는 내지 않고 안쪽에서만 씀) */
+    N("잠", "자는 일", ["자-", "-ㅁ"], { hidden: true, chunks: [{ text: "잠", m: ["자-", "-ㅁ"] }] }),
+    N("꿈", "자면서 보는 것", ["꾸-", "-ㅁ"], { hidden: true, chunks: [{ text: "꿈", m: ["꾸-", "-ㅁ"] }] }),
+    N("춤", "추는 동작", ["추-", "-ㅁ"], { hidden: true, chunks: [{ text: "춤", m: ["추-", "-ㅁ"] }] }),
+
+    /* 명사 + 명사 */
+    N("눈사람", "눈으로 만든 사람 모양", ["눈/눈", "사람"], { ...종속("'눈으로 만든 사람'으로, '눈'이 '사람'을 꾸며 줍니다."), ...X }),
+    N("꽃잎", "꽃의 잎", ["꽃", "잎"], 종속("'꽃의 잎'으로, '꽃'이 '잎'을 꾸며 줍니다.")),
+    N("솔잎", "소나무의 잎", ["솔", "잎"], 종속("'솔(소나무)의 잎'으로, '솔'이 '잎'을 꾸며 줍니다.")),
+    N("별빛", "별의 빛", ["별", "빛"], 종속("'별에서 나오는 빛'으로, '별'이 '빛'을 꾸며 줍니다.")),
+    N("달빛", "달의 빛", ["달", "빛"], 종속("'달에서 나오는 빛'으로, '달'이 '빛'을 꾸며 줍니다.")),
+    N("눈빛", "눈에 나타나는 기운", ["눈", "빛"], 종속("'눈의 빛'으로, '눈'이 '빛'을 꾸며 줍니다.")),
+    N("봄날", "봄철의 날", ["봄", "날"], 종속("'봄의 날'로, '봄'이 '날'을 꾸며 줍니다.")),
+    N("여름밤", "여름철의 밤", ["여름", "밤"], 종속("'여름의 밤'으로, '여름'이 '밤'을 꾸며 줍니다.")),
+    N("겨울밤", "겨울철의 밤", ["겨울", "밤"], 종속("'겨울의 밤'으로, '겨울'이 '밤'을 꾸며 줍니다.")),
+    N("밤하늘", "밤의 하늘", ["밤", "하늘"], 종속("'밤의 하늘'로, '밤'이 '하늘'을 꾸며 줍니다.")),
+    N("샘물", "샘에서 나오는 물", ["샘", "물"], 종속("'샘에서 솟는 물'로, '샘'이 '물'을 꾸며 줍니다.")),
+    N("들꽃", "들에 피는 꽃", ["들", "꽃"], 종속("'들에 피는 꽃'으로, '들'이 '꽃'을 꾸며 줍니다.")),
+    N("들길", "들에 난 길", ["들", "길"], 종속("'들에 난 길'로, '들'이 '길'을 꾸며 줍니다.")),
+    N("흙길", "흙으로 된 길", ["흙", "길"], 종속("'흙으로 된 길'로, '흙'이 '길'을 꾸며 줍니다.")),
+    N("물길", "물이 흐르는 길", ["물", "길"], 종속("'물이 흐르는 길'로, '물'이 '길'을 꾸며 줍니다.")),
+    N("손길", "손이 미치는 움직임, 도움의 손", ["손", "길"], 종속("'손이 뻗치는 길'로, '손'이 '길'을 꾸며 줍니다. '발길', '눈길'과 같은 짜임입니다.")),
+    N("밥그릇", "밥을 담는 그릇", ["밥", "그릇"], { ...종속("'밥을 담는 그릇'으로, '밥'이 '그릇'을 꾸며 줍니다."), ...X }),
+    N("국그릇", "국을 담는 그릇", ["국", "그릇"], 종속("'국을 담는 그릇'으로, '국'이 '그릇'을 꾸며 줍니다.")),
+    N("쌀밥", "쌀로 지은 밥", ["쌀", "밥"], 종속("'쌀로 지은 밥'으로, '쌀'이 '밥'을 꾸며 줍니다.")),
+    N("보리밥", "보리로 지은 밥", ["보리", "밥"], 종속("'보리로 지은 밥'으로, '보리'가 '밥'을 꾸며 줍니다.")),
+    N("콩밥", "콩을 넣어 지은 밥", ["콩", "밥"], 종속("'콩을 넣은 밥'으로, '콩'이 '밥'을 꾸며 줍니다.")),
+    N("김밥", "김으로 싼 밥", ["김", "밥"], 종속("'김으로 싼 밥'으로, '김'이 '밥'을 꾸며 줍니다.")),
+    N("국물", "국의 물", ["국", "물"], 종속("'국의 물'로, '국'이 '물'을 꾸며 줍니다.")),
+    N("손등", "손의 바깥쪽", ["손", "등"], 종속("'손의 등'으로, '손'이 '등'을 꾸며 줍니다.")),
+    N("발등", "발의 윗면", ["발", "등"], 종속("'발의 등'으로, '발'이 '등'을 꾸며 줍니다.")),
+    N("손바닥", "손의 안쪽 면", ["손", "바닥"], 종속("'손의 바닥'으로, '손'이 '바닥'을 꾸며 줍니다.")),
+    N("발바닥", "발의 아래 면", ["발", "바닥"], 종속("'발의 바닥'으로, '발'이 '바닥'을 꾸며 줍니다.")),
+    N("입맛", "음식을 먹고 싶은 마음", ["입", "맛"], 종속("'입으로 느끼는 맛'으로, '입'이 '맛'을 꾸며 줍니다.")),
+    N("물맛", "물의 맛", ["물", "맛"], 종속("'물의 맛'으로, '물'이 '맛'을 꾸며 줍니다.")),
+    N("봄꽃", "봄에 피는 꽃", ["봄", "꽃"], 종속("'봄에 피는 꽃'으로, '봄'이 '꽃'을 꾸며 줍니다.")),
+    N("밤송이", "밤을 싸고 있는 송이", ["밤/열매", "송이"], 종속("'밤의 송이'로, '밤'이 '송이'를 꾸며 줍니다.")),
+    N("꽃송이", "꽃의 송이", ["꽃", "송이"], 종속("'꽃의 송이'로, '꽃'이 '송이'를 꾸며 줍니다.")),
+    N("눈송이", "눈의 송이", ["눈/눈", "송이"], 종속("'눈의 송이'로, '눈'이 '송이'를 꾸며 줍니다.")),
+    N("술집", "술을 파는 집", ["술", "집"], 종속("'술을 파는 집'으로, '술'이 '집'을 꾸며 줍니다.")),
+    N("꽃집", "꽃을 파는 집", ["꽃", "집"], 종속("'꽃을 파는 집'으로, '꽃'이 '집'을 꾸며 줍니다.")),
+    N("떡집", "떡을 파는 집", ["떡", "집"], 종속("'떡을 파는 집'으로, '떡'이 '집'을 꾸며 줍니다.")),
+    N("떡국", "떡을 넣어 끓인 국", ["떡", "국"], 종속("'떡을 넣은 국'으로, '떡'이 '국'을 꾸며 줍니다.")),
+    N("물오리", "물에 사는 오리", ["물", "오리"], 종속("'물에 사는 오리'로, '물'이 '오리'를 꾸며 줍니다.")),
+    N("집토끼", "집에서 기르는 토끼", ["집", "토끼"], 종속("'집에서 기르는 토끼'로, '집'이 '토끼'를 꾸며 줍니다.")),
+    N("물개", "바다에 사는 개 비슷한 동물", ["물", "개"], 종속("'물에 사는 개(같은 동물)'로, '물'이 '개'를 꾸며 줍니다.")),
+    N("발소리", "발을 디딜 때 나는 소리", ["발", "소리"], 종속("'발이 내는 소리'로, '발'이 '소리'를 꾸며 줍니다.")),
+    N("말소리", "말하는 소리", ["말", "소리"], 종속("'말하는 소리'로, '말'이 '소리'를 꾸며 줍니다.")),
+    N("아침저녁", "아침과 저녁", ["아침", "저녁"], 대등("'아침'과 '저녁'이 대등하게 결합해 '아침과 저녁'을 뜻합니다.")),
+    N("봄가을", "봄과 가을", ["봄", "가을"], 대등("'봄'과 '가을'이 대등하게 결합해 '봄과 가을'을 뜻합니다.")),
+    N("팔씨름", "팔로 하는 씨름", ["팔", "씨름"], 종속("'팔로 하는 씨름'으로, '팔'이 '씨름'을 꾸며 줍니다.")),
+
+    /* 관형사 + 명사 */
+    N("오른손", "오른쪽 손", ["오른", "손"], { ...종속("'오른쪽의 손'으로, 관형사 '오른'이 '손'을 꾸며 줍니다."), ...X }),
+    N("왼손", "왼쪽 손", ["왼", "손"], { ...종속("'왼쪽의 손'으로, 관형사 '왼'이 '손'을 꾸며 줍니다."), ...X }),
+    N("오른발", "오른쪽 발", ["오른", "발"], 종속("'오른쪽의 발'로, 관형사 '오른'이 '발'을 꾸며 줍니다.")),
+    N("왼발", "왼쪽 발", ["왼", "발"], 종속("'왼쪽의 발'로, 관형사 '왼'이 '발'을 꾸며 줍니다.")),
+    N("옛날", "지나간 때", ["옛", "날"], { ...종속("'지나간 날'로, 관형사 '옛'이 '날'을 꾸며 줍니다."), ...X }),
+    N("옛집", "예전에 살던 집", ["옛", "집"], 종속("'예전의 집'으로, 관형사 '옛'이 '집'을 꾸며 줍니다.")),
+    N("옛사랑", "예전에 한 사랑", ["옛", "사랑"], 종속("'예전의 사랑'으로, 관형사 '옛'이 '사랑'을 꾸며 줍니다.")),
+    N("딴사람", "다른 사람", ["딴", "사람"], 종속("'다른 사람'으로, 관형사 '딴'이 '사람'을 꾸며 줍니다.")),
+    N("온몸", "몸 전체", ["온", "몸"], 종속("'전부의 몸'으로, 관형사 '온'이 '몸'을 꾸며 줍니다.")),
+
+    /* 여러 층 합성어 */
+    N("비빔", "비빈 음식", ["비비-", "-ㅁ"], { chunks: [{ text: "비빔", m: ["비비-", "-ㅁ"] }] }),
+    N("비빔밥", "밥에 나물을 넣고 비빈 음식", [{ ref: "비빔" }, "밥"], { ...종속("'비빈 밥'으로, '비빔'이 '밥'을 꾸며 줍니다."), ...X, chunks: [{ text: "비빔", m: ["비비-", "-ㅁ"] }, { text: "밥", m: ["밥"] }] }),
+    N("싸움", "싸우는 일", ["싸우-", "-ㅁ"], { chunks: [{ text: "싸움", m: ["싸우-", "-ㅁ"] }], ...X }),
+    N("눈싸움", "눈을 뭉쳐 던지며 노는 싸움", ["눈/눈", { ref: "싸움" }], { ...종속("'눈으로 하는 싸움'으로, '눈'이 '싸움'을 꾸며 줍니다."), chunks: [{ text: "눈", m: ["눈/눈"] }, { text: "싸움", m: ["싸우-", "-ㅁ"] }] }),
+    N("말싸움", "말로 하는 싸움", ["말", { ref: "싸움" }], { ...종속("'말로 하는 싸움'으로, '말'이 '싸움'을 꾸며 줍니다."), chunks: [{ text: "말", m: ["말"] }, { text: "싸움", m: ["싸우-", "-ㅁ"] }] }),
+    N("몸싸움", "몸으로 밀고 당기는 싸움", ["몸", { ref: "싸움" }], { ...종속("'몸으로 하는 싸움'으로, '몸'이 '싸움'을 꾸며 줍니다."), chunks: [{ text: "몸", m: ["몸"] }, { text: "싸움", m: ["싸우-", "-ㅁ"] }] }),
+    N("웃음소리", "웃는 소리", [{ ref: "웃음" }, "소리"], { ...종속("'웃음의 소리'로, '웃음'이 '소리'를 꾸며 줍니다."), ...X }),
+    N("울음소리", "우는 소리", [{ ref: "울음" }, "소리"], 종속("'울음의 소리'로, '울음'이 '소리'를 꾸며 줍니다.")),
+    N("지름", "가로질러 가는 것", ["지르-", "-ㅁ"], { chunks: [{ text: "지름", m: ["지르-", "-ㅁ"] }] }),
+    N("지름길", "가로질러 가는 빠른 길", [{ ref: "지름" }, "길"], { ...종속("'질러가는 길'로, '지름'이 '길'을 꾸며 줍니다."), ...X, chunks: [{ text: "지름", m: ["지르-", "-ㅁ"] }, { text: "길", m: ["길"] }] }),
+    N("얼음물", "얼음을 넣은 물", [{ ref: "얼음" }, "물"], 종속("'얼음을 넣은 물'로, '얼음'이 '물'을 꾸며 줍니다.")),
+    N("무침", "양념에 무친 음식", ["무치-", "-ㅁ"], { chunks: [{ text: "무침", m: ["무치-", "-ㅁ"] }] }),
+    N("나물무침", "나물을 무친 음식", ["나물", { ref: "무침" }], { ...종속("'나물로 만든 무침'으로, '나물'이 '무침'을 꾸며 줍니다."), chunks: [{ text: "나물", m: ["나물"] }, { text: "무침", m: ["무치-", "-ㅁ"] }] }),
+    V("잠자다", "잠을 자다", [{ ref: "잠" }, "자-"], { ...종속("'잠을 자다'라는 목적어+서술어 구성으로, '잠'이 '자다'의 대상을 한정합니다."), ...X, chunks: [{ text: "잠", m: ["자-", "-ㅁ"] }, { text: "자", m: ["자-"] }] }),
+    V("꿈꾸다", "꿈을 꾸다", [{ ref: "꿈" }, "꾸-"], { ...종속("'꿈을 꾸다'라는 목적어+서술어 구성으로, '꿈'이 '꾸다'의 대상을 한정합니다."), ...X, chunks: [{ text: "꿈", m: ["꾸-", "-ㅁ"] }, { text: "꾸", m: ["꾸-"] }] }),
+    V("춤추다", "춤을 추다", [{ ref: "춤" }, "추-"], { ...종속("'춤을 추다'라는 목적어+서술어 구성으로, '춤'이 '추다'의 대상을 한정합니다."), ...X, chunks: [{ text: "춤", m: ["추-", "-ㅁ"] }, { text: "추", m: ["추-"] }] }),
+
+    /* 어간 + 연결 어미 + 어간 */
+    V("뛰어오다", "뛰면서 오다", ["뛰-", "-어", "오-"], 종속("'뛰어서 오다'로, 앞부분 '뛰어'가 뒤 동작 '오다'의 방식을 한정합니다.")),
+    V("뛰어넘다", "뛰어서 넘다", ["뛰-", "-어", "넘-"], { ...종속("'뛰어서 넘다'로, 앞부분 '뛰어'가 뒤 동작 '넘다'의 방식을 한정합니다."), ...X }),
+    V("날아가다", "날아서 가다", ["날-", "-아", "가-"], { ...종속("'날아서 가다'로, 앞부분 '날아'가 뒤 동작 '가다'의 방식을 한정합니다."), ...X }),
+    V("날아오다", "날아서 오다", ["날-", "-아", "오-"], 종속("'날아서 오다'로, 앞부분 '날아'가 뒤 동작 '오다'의 방식을 한정합니다.")),
+    V("들어오다", "안으로 오다", ["들-", "-어", "오-"], 종속("'들어서 오다'로, 앞부분 '들어'가 뒤 동작 '오다'의 방식을 한정합니다.")),
+    V("살아가다", "삶을 이어 가다", ["살-", "-아", "가-"], 종속("'살면서 가다'로, 앞부분 '살아'가 뒤 동작 '가다'를 한정합니다.")),
+    V("살아나다", "죽을 뻔하다가 살다", ["살-", "-아", "나-"], 종속("'살아서 나다'로, 앞부분 '살아'가 뒤 동작 '나다'를 한정합니다.")),
+    V("깨어나다", "잠에서 깨다", ["깨-", "-어", "나-"], 종속("'깨어서 나다'로, 앞부분 '깨어'가 뒤 동작 '나다'를 한정합니다.")),
+    V("일어나다", "몸을 일으키다", ["일-", "-어", "나-"], 종속("'일어서 나다'로, 앞부분 '일어'가 뒤 동작 '나다'를 한정합니다.")),
+    V("찾아가다", "찾아서 가다", ["찾-", "-아", "가-"], 종속("'찾아서 가다'로, 앞부분 '찾아'가 뒤 동작 '가다'의 방식을 한정합니다.")),
+    V("돌아서다", "몸을 돌려 서다", ["돌-", "-아", "서-"], 종속("'돌아서 서다'로, 앞부분 '돌아'가 뒤 동작 '서다'의 방식을 한정합니다.")),
+    V("갈아타다", "다른 탈것으로 바꾸어 타다", ["갈-", "-아", "타-"], 종속("'갈아서 타다'로, 앞부분 '갈아'가 뒤 동작 '타다'의 방식을 한정합니다.")),
+    V("얻어먹다", "남에게 얻어서 먹다", ["얻-", "-어", "먹-"], 종속("'얻어서 먹다'로, 앞부분 '얻어'가 뒤 동작 '먹다'의 방식을 한정합니다.")),
+    V("달려가다", "달려서 가다", ["달리-", "-어", "가-"], { ...종속("'달려서 가다'로, 앞부분 '달려'가 뒤 동작 '가다'의 방식을 한정합니다."), chunks: [{ text: "달려", m: ["달리-", "-어"] }, { text: "가", m: ["가-"] }] }),
+    V("내려가다", "아래로 가다", ["내리-", "-어", "가-"], { ...종속("'내려서 가다'로, 앞부분 '내려'가 뒤 동작 '가다'의 방향을 한정합니다."), chunks: [{ text: "내려", m: ["내리-", "-어"] }, { text: "가", m: ["가-"] }] }),
+    V("내려오다", "아래로 오다", ["내리-", "-어", "오-"], { ...종속("'내려서 오다'로, 앞부분 '내려'가 뒤 동작 '오다'의 방향을 한정합니다."), chunks: [{ text: "내려", m: ["내리-", "-어"] }, { text: "오", m: ["오-"] }] }),
+
+    /* 어간 + 관형사형 어미 + 명사 */
+    N("볼거리", "볼 만한 것", ["보-", "-ㄹ", "거리"], { ...종속("'볼 만한 거리'로, 앞부분 '볼'이 '거리'를 꾸며 줍니다."), ...X, chunks: [{ text: "볼", m: ["보-", "-ㄹ"] }, { text: "거리", m: ["거리"] }] }),
+    N("읽을거리", "읽을 만한 것", ["읽-", "-을", "거리"], { ...종속("'읽을 만한 거리'로, 앞부분 '읽을'이 '거리'를 꾸며 줍니다."), ...X }),
+
+    /* 명사 + 용언 어간 */
+    V("끝나다", "일이 마무리되다", ["끝", "나-"], 종속("'끝이 나다'라는 주어+서술어 구성으로, '끝'이 '나다'의 주체를 한정합니다.")),
+    V("맛나다", "맛이 좋다", ["맛", "나-"], 종속("'맛이 나다'라는 주어+서술어 구성으로, '맛'이 '나다'의 주체를 한정합니다.")),
+    V("멍들다", "멍이 생기다", ["멍", "들-"], 종속("'멍이 들다'라는 주어+서술어 구성으로, '멍'이 '들다'의 주체를 한정합니다.")),
+    V("철들다", "분별력이 생기다", ["철", "들-"], 종속("'철이 들다'라는 주어+서술어 구성으로, '철'이 '들다'의 주체를 한정합니다.")),
+    A("맛없다", "맛이 없다", ["맛", "없-"], { ...종속("'맛이 없다'라는 주어+서술어 구성으로, '맛'이 '없다'의 주체를 한정합니다."), ...X }),
+    A("힘없다", "힘이 없다", ["힘", "없-"], 종속("'힘이 없다'라는 주어+서술어 구성으로, '힘'이 '없다'의 주체를 한정합니다.")),
+    A("철없다", "분별력이 없다", ["철", "없-"], 종속("'철이 없다'라는 주어+서술어 구성으로, '철'이 '없다'의 주체를 한정합니다.")),
+
+    /* 비통사적 */
+    A("짙푸르다", "짙게 푸르다", ["짙-", "푸르-"], { ...대등("'짙고 푸르다'로, 두 상태가 대등하게 이어집니다."), ...X }),
+    V("얽매다", "얽어서 매다", ["얽-", "매-"], { ...대등("'얽고 매다'로, 두 동작이 대등하게 이어집니다."), ...X }),
+
+    /* 접두 파생어 */
+    N("풋내", "풋것의 냄새", ["풋-", "내"]),
+    N("맨입", "아무것도 먹지 않은 입", ["맨-", "입"]),
+    N("맨몸", "아무것도 걸치지 않은 몸", ["맨-", "몸"]),
+    N("맨땅", "아무것도 깔지 않은 땅", ["맨-", "땅"]),
+    N("개떡", "질이 낮은 떡", ["개-", "떡"]),
+    N("헛일", "보람 없는 일", ["헛-", "일"], X),
+    N("헛말", "쓸데없는 말", ["헛-", "말"]),
+    N("헛발", "잘못 디딘 발", ["헛-", "발"]),
+    N("군살", "쓸데없이 붙은 살", ["군-", "살"], X),
+    N("군불", "방을 덥히려 때는 불", ["군-", "불"]),
+    N("한밤", "깊은 밤", ["한-", "밤"]),
+    N("한낮", "낮의 한가운데", ["한-", "낮"], X),
+    N("한복판", "가장 가운데", ["한-", "복판"]),
+    N("맏딸", "첫째 딸", ["맏-", "딸"], X),
+    N("홀몸", "혼자인 몸", ["홀-", "몸"]),
+    N("홀어미", "남편을 잃은 여자", ["홀-", "어미"]),
+    N("홑옷", "한 겹으로 된 옷", ["홑-", "옷"]),
+    N("홑겹", "한 겹", ["홑-", "겹"]),
+    N("시아버지", "남편의 아버지", ["시-/가족", "아버지"]),
+    N("시누이", "남편의 누이", ["시-/가족", "누이"]),
+    N("알밤", "껍질을 벗긴 밤", ["알-/접", "밤/열매"], X),
+    N("참뜻", "진짜 뜻", ["참-", "뜻"]),
+    N("참사랑", "진실한 사랑", ["참-", "사랑"]),
+    N("웃돈", "본래 값에 더 얹는 돈", ["웃-/접", "돈"], X),
+    N("웃옷", "위에 입는 옷", ["웃-/접", "옷"]),
+    N("맞바람", "마주 부는 바람", ["맞-/접", "바람"]),
+    A("새하얗다", "매우 하얗다", ["새-", "하얗-"], X),
+    A("새빨갛다", "매우 빨갛다", ["새-", "빨갛-"]),
+    A("시퍼렇다", "매우 퍼렇다", ["시-", "퍼렇-"]),
+    A("시뻘겋다", "매우 뻘겋다", ["시-", "뻘겋-"]),
+    A("드세다", "매우 세다", ["드-", "세-"]),
+    V("들볶다", "괴롭게 못살게 굴다", ["들-/접", "볶-"], X),
+    V("들쑤시다", "마구 쑤시다", ["들-/접", "쑤시-"]),
+    V("짓뭉개다", "마구 뭉개다", ["짓-", "뭉개-"]),
+    V("치받다", "위로 받다", ["치-", "받-"]),
+    V("치닫다", "위로 달리다", ["치-", "닫-"]),
+    V("되묻다", "다시 묻다", ["되-", "묻-"], X),
+    V("되팔다", "산 것을 다시 팔다", ["되-", "팔-"]),
+    V("휘두르다", "마구 두르다", ["휘-", "두르-"]),
+    V("뒤섞다", "마구 섞다", ["뒤-", "섞-"], X),
+    V("뒤엎다", "뒤집어 엎다", ["뒤-", "엎-"]),
+    V("뒤흔들다", "마구 흔들다", ["뒤-", "흔들-"]),
+    V("뒤바꾸다", "완전히 바꾸다", ["뒤-", "바꾸-"]),
+    V("뒤덮다", "온통 덮다", ["뒤-", "덮-"]),
+    V("내던지다", "힘껏 밖으로 던지다", ["내-", "던지-"], X),
+    V("내쫓다", "밖으로 쫓다", ["내-", "쫓-"]),
+    V("내밀다", "밖으로 밀다", ["내-", "밀-"]),
+    V("빗맞다", "빗나가서 맞다", ["빗-", "맞-"]),
+    V("설익다", "충분히 익지 않다", ["설-/접", "익-"], X),
+    V("설삶다", "충분히 삶지 않다", ["설-/접", "삶-"]),
+    V("맞들다", "마주 들다", ["맞-/접", "들-"]),
+
+    /* 접미 파생어 (한정적) */
+    N("잠꾸러기", "잠이 많은 사람", [{ ref: "잠" }, "-꾸러기"], { ...X, chunks: [{ text: "잠", m: ["자-", "-ㅁ"] }, { text: "꾸러기", m: ["-꾸러기"] }] }),
+    N("춤꾼", "춤을 잘 추는 사람", [{ ref: "춤" }, "-꾼"], { chunks: [{ text: "춤", m: ["추-", "-ㅁ"] }, { text: "꾼", m: ["-꾼"] }] }),
+    N("씨름꾼", "씨름을 하는 사람", ["씨름", "-꾼"]),
+    N("구경꾼", "구경하는 사람", ["구경", "-꾼"]),
+    N("떼쟁이", "떼를 잘 쓰는 사람", ["떼", "-쟁이"]),
+    N("빚쟁이", "빚을 진 사람", ["빚", "-쟁이"]),
+    N("대장장이", "쇠를 다루는 기술자", ["대장", "-장이"], X),
+    PR("너희들", "너희 여러 사람", [{ ref: "너희" }, "-들"], X),
+    PR("저희", "우리의 낮춤말", ["저", "-희"]),
+    N("나무들", "여러 나무", ["나무", "-들"]),
+    NU("첫째", "첫 번째", ["첫", "-째"], X),
+    NU("셋째", "세 번째", ["셋", "-째"]),
+    NU("넷째", "네 번째", ["넷", "-째"]),
+    N("손질", "손으로 다듬는 일", ["손", "-질"]),
+    N("걸레질", "걸레로 닦는 일", ["걸레", "-질"]),
+    N("부채질", "부채를 부치는 일", ["부채", "-질"]),
+    N("도둑질", "남의 것을 훔치는 짓", ["도둑", "-질"], X),
+    N("주먹질", "주먹으로 치는 짓", ["주먹", "-질"]),
+    N("헛발질", "헛디디거나 잘못 차는 짓", [{ ref: "헛발" }, "-질"], X),
+    V("엎치다", "세게 엎다", ["엎-", "-치-"]),
+    A("굵다랗다", "꽤 굵다", ["굵-", "-다랗-"]),
+    N("해님", "해를 높여 부르는 말", ["해/태양", "-님"], X),
+    N("달님", "달을 높여 부르는 말", ["달", "-님"]),
+    N("별님", "별을 높여 부르는 말", ["별", "-님"]),
+
+    /* 접미 파생어 (지배적) */
+    N("가리개", "가리는 물건", ["가리-", "-개"]),
+    N("깔개", "까는 물건", ["깔-", "-개"]),
+    N("쓰기", "글을 쓰는 일", ["쓰-", "-기"], X),
+    N("듣기", "듣는 일", ["듣-", "-기"]),
+    N("걷기", "걷는 일", ["걷-", "-기"]),
+    N("던지기", "던지는 일", ["던지-", "-기"]),
+    N("말하기", "말을 하는 일", [{ grp: ["말", "-하-"] }, "-기"], X),
+    N("졸음", "졸리는 느낌", ["졸-", "-음"]),
+    N("떡볶이", "떡을 볶은 음식", [{ grp: ["떡", "볶-"] }, "-이"], X),
+    N("손잡이", "손으로 잡는 부분", [{ grp: ["손", "잡-"] }, "-이"], X),
+    N("목걸이", "목에 거는 장신구", [{ grp: ["목", "걸-"] }, "-이"], X),
+    N("귀걸이", "귀에 거는 장신구", [{ grp: ["귀", "걸-"] }, "-이"]),
+    N("옷걸이", "옷을 거는 도구", [{ grp: ["옷", "걸-"] }, "-이"]),
+    N("때밀이", "때를 미는 일이나 사람", [{ grp: ["때", "밀-"] }, "-이"]),
+    N("젖먹이", "젖을 먹는 아이", [{ grp: ["젖", "먹-"] }, "-이"], X),
+    N("해맞이", "새해 첫 해를 맞이하는 일", [{ grp: ["해/태양", "맞-"] }, "-이"]),
+    N("길잡이", "길을 이끄는 사람", [{ grp: ["길", "잡-"] }, "-이"], X),
+    N("더듬이", "곤충의 감각 기관", ["더듬-", "-이"]),
+    N("벌이", "돈을 버는 일", ["벌-", "-이"]),
+    N("울보", "잘 우는 아이", ["울-", "-보"], X),
+    N("먹보", "많이 먹는 사람", ["먹-", "-보"]),
+    N("검둥이", "털이 검은 개", ["검-", "-둥이"]),
+    AD("멀리", "멀게", ["멀-", "-리"], X),
+    A("참답다", "참되다", ["참", "-답-"]),
+    A("알차다", "속이 꽉 차다", ["알", "-차-"]),
+    V("말하다", "말을 하다", ["말", "-하-"], X),
+    V("밥하다", "밥을 짓다", ["밥", "-하-"]),
+    V("빨래하다", "빨래를 하다", ["빨래", "-하-"]),
+    V("나무하다", "땔나무를 마련하다", ["나무", "-하-"]),
+
+    /* ======== 확장 3차: 모의고사 단골 유형 ======== */
+    N("셈", "수를 세는 일", ["세-/동", "-ㅁ"], { hidden: true, chunks: [{ text: "셈", m: ["세-/동", "-ㅁ"] }] }),
+
+    /* 명사 + 명사 */
+    N("길바닥", "길의 바닥", ["길", "바닥"], 종속("'길의 바닥'으로, '길'이 '바닥'을 꾸며 줍니다.")),
+    N("보름달", "보름에 뜨는 둥근 달", ["보름", "달"], { ...종속("'보름에 뜨는 달'로, '보름'이 '달'을 꾸며 줍니다."), ...X }),
+    N("물속", "물의 속", ["물", "속"], 종속("'물의 속'으로, '물'이 '속'을 꾸며 줍니다.")),
+    N("땅속", "땅의 속", ["땅", "속"], 종속("'땅의 속'으로, '땅'이 '속'을 꾸며 줍니다.")),
+    N("마음속", "마음의 속", ["마음", "속"], 종속("'마음의 속'으로, '마음'이 '속'을 꾸며 줍니다.")),
+    N("꿈속", "꿈의 속", [{ ref: "꿈" }, "속"], { ...종속("'꿈의 속'으로, '꿈'이 '속'을 꾸며 줍니다."), chunks: [{ text: "꿈", m: ["꾸-", "-ㅁ"] }, { text: "속", m: ["속"] }] }),
+    N("이슬비", "이슬처럼 가늘게 내리는 비", ["이슬", "비"], { ...종속("'이슬 같은 비'로, '이슬'이 '비'를 꾸며 줍니다."), ...X }),
+    N("함박눈", "굵고 탐스럽게 내리는 눈", ["함박", "눈/눈"], 종속("'함박처럼 큰 눈'으로, '함박'이 '눈'을 꾸며 줍니다.")),
+    N("물방울", "물의 방울", ["물", "방울"], 종속("'물의 방울'로, '물'이 '방울'을 꾸며 줍니다.")),
+    N("눈덩이", "눈을 뭉친 덩이", ["눈/눈", "덩이"], 종속("'눈의 덩이'로, '눈'이 '덩이'를 꾸며 줍니다.")),
+    N("흙덩이", "흙이 뭉친 덩이", ["흙", "덩이"], 종속("'흙의 덩이'로, '흙'이 '덩이'를 꾸며 줍니다.")),
+    N("돌덩이", "돌의 덩이", ["돌", "덩이"], 종속("'돌의 덩이'로, '돌'이 '덩이'를 꾸며 줍니다.")),
+    N("불꽃", "타오르는 불의 꽃", ["불", "꽃"], { ...종속("'불의 꽃'으로, '불'이 '꽃'을 꾸며 줍니다."), ...X }),
+    N("불빛", "불의 빛", ["불", "빛"], 종속("'불에서 나오는 빛'으로, '불'이 '빛'을 꾸며 줍니다.")),
+    N("꽃가루", "꽃의 가루", ["꽃", "가루"], 종속("'꽃의 가루'로, '꽃'이 '가루'를 꾸며 줍니다.")),
+    N("밀가루", "밀을 빻은 가루", ["밀", "가루"], 종속("'밀로 만든 가루'로, '밀'이 '가루'를 꾸며 줍니다.")),
+    N("쌀가루", "쌀을 빻은 가루", ["쌀", "가루"], 종속("'쌀로 만든 가루'로, '쌀'이 '가루'를 꾸며 줍니다.")),
+    N("콩가루", "콩을 빻은 가루", ["콩", "가루"], 종속("'콩으로 만든 가루'로, '콩'이 '가루'를 꾸며 줍니다.")),
+    N("발자국", "발이 남긴 자국", ["발", "자국"], { ...종속("'발의 자국'으로, '발'이 '자국'을 꾸며 줍니다."), ...X }),
+    N("손자국", "손이 남긴 자국", ["손", "자국"], 종속("'손의 자국'으로, '손'이 '자국'을 꾸며 줍니다.")),
+    N("발자취", "발이 남긴 자취", ["발", "자취"], 종속("'발의 자취'로, '발'이 '자취'를 꾸며 줍니다.")),
+    N("길목", "길의 중요한 통로", ["길", "목"], 종속("'길의 목(잘록한 곳)'으로, '길'이 '목'을 꾸며 줍니다.")),
+    N("꽃가지", "꽃이 달린 가지", ["꽃", "가지"], 종속("'꽃이 핀 가지'로, '꽃'이 '가지'를 꾸며 줍니다.")),
+    N("풀잎", "풀의 잎", ["풀", "잎"], 종속("'풀의 잎'으로, '풀'이 '잎'을 꾸며 줍니다.")),
+    N("풀밭", "풀이 난 밭", ["풀", "밭"], 종속("'풀이 난 밭'으로, '풀'이 '밭'을 꾸며 줍니다.")),
+    N("잔디밭", "잔디가 난 밭", ["잔디", "밭"], 종속("'잔디가 난 밭'으로, '잔디'가 '밭'을 꾸며 줍니다.")),
+    N("모래밭", "모래가 깔린 곳", ["모래", "밭"], 종속("'모래가 깔린 밭'으로, '모래'가 '밭'을 꾸며 줍니다.")),
+    N("하늘길", "하늘의 길", ["하늘", "길"], 종속("'하늘로 난 길'로, '하늘'이 '길'을 꾸며 줍니다.")),
+    N("눈앞", "눈의 바로 앞", ["눈", "앞"], 종속("'눈의 앞'으로, '눈'이 '앞'을 꾸며 줍니다.")),
+    N("코앞", "아주 가까운 곳", ["코", "앞"], 종속("'코의 앞'으로, '코'가 '앞'을 꾸며 줍니다.")),
+    N("발밑", "발의 아래", ["발", "밑"], 종속("'발의 밑'으로, '발'이 '밑'을 꾸며 줍니다.")),
+    N("손끝", "손가락의 끝", ["손", "끝"], 종속("'손의 끝'으로, '손'이 '끝'을 꾸며 줍니다.")),
+    N("혀끝", "혀의 끝", ["혀", "끝"], 종속("'혀의 끝'으로, '혀'가 '끝'을 꾸며 줍니다.")),
+    N("봄밤", "봄철의 밤", ["봄", "밤"], 종속("'봄의 밤'으로, '봄'이 '밤'을 꾸며 줍니다.")),
+    N("밤바람", "밤에 부는 바람", ["밤", "바람"], 종속("'밤에 부는 바람'으로, '밤'이 '바람'을 꾸며 줍니다.")),
+    N("낮잠", "낮에 자는 잠", ["낮", { ref: "잠" }], { ...종속("'낮에 자는 잠'으로, '낮'이 '잠'을 꾸며 줍니다."), ...X, chunks: [{ text: "낮", m: ["낮"] }, { text: "잠", m: ["자-", "-ㅁ"] }] }),
+    N("겨울잠", "겨울 동안 자는 잠", ["겨울", { ref: "잠" }], { ...종속("'겨울에 자는 잠'으로, '겨울'이 '잠'을 꾸며 줍니다."), chunks: [{ text: "겨울", m: ["겨울"] }, { text: "잠", m: ["자-", "-ㅁ"] }] }),
+    N("말솜씨", "말하는 솜씨", ["말", "솜씨"], 종속("'말하는 솜씨'로, '말'이 '솜씨'를 꾸며 줍니다.")),
+    N("글솜씨", "글 쓰는 솜씨", ["글", "솜씨"], 종속("'글 쓰는 솜씨'로, '글'이 '솜씨'를 꾸며 줍니다.")),
+    N("목소리", "목에서 나는 소리", ["목", "소리"], { ...종속("'목에서 나는 소리'로, '목'이 '소리'를 꾸며 줍니다."), ...X }),
+    N("물소리", "물이 흐르는 소리", ["물", "소리"], 종속("'물의 소리'로, '물'이 '소리'를 꾸며 줍니다.")),
+    N("바람소리", "바람이 부는 소리", ["바람", "소리"], 종속("'바람의 소리'로, '바람'이 '소리'를 꾸며 줍니다.")),
+    N("새소리", "새가 우는 소리", ["새/조", "소리"], 종속("'새의 소리'로, '새'가 '소리'를 꾸며 줍니다. 여기서 '새'는 관형사가 아니라 날아다니는 새(명사)입니다.")),
+    N("콩기름", "콩에서 짠 기름", ["콩", "기름"], 종속("'콩으로 짠 기름'으로, '콩'이 '기름'을 꾸며 줍니다.")),
+    N("소금물", "소금을 탄 물", ["소금", "물"], 종속("'소금을 탄 물'로, '소금'이 '물'을 꾸며 줍니다.")),
+    N("꿀물", "꿀을 탄 물", ["꿀", "물"], 종속("'꿀을 탄 물'로, '꿀'이 '물'을 꾸며 줍니다.")),
+    N("미역국", "미역을 넣어 끓인 국", ["미역", "국"], 종속("'미역을 넣은 국'으로, '미역'이 '국'을 꾸며 줍니다.")),
+    N("국밥", "국에 만 밥", ["국", "밥"], 종속("'국에 만 밥'으로, '국'이 '밥'을 꾸며 줍니다.")),
+    N("주먹밥", "주먹처럼 뭉친 밥", ["주먹", "밥"], 종속("'주먹 모양의 밥'으로, '주먹'이 '밥'을 꾸며 줍니다.")),
+    N("곁눈", "옆으로 흘겨보는 눈", ["곁", "눈"], 종속("'곁으로 보는 눈'으로, '곁'이 '눈'을 꾸며 줍니다.")),
+    N("그림", "선과 색으로 나타낸 것", ["그리-", "-ㅁ"], { chunks: [{ text: "그림", m: ["그리-", "-ㅁ"] }], ...X }),
+    N("그림책", "그림이 실린 책", [{ ref: "그림" }, "책"], { ...종속("'그림이 있는 책'으로, '그림'이 '책'을 꾸며 줍니다."), chunks: [{ text: "그림", m: ["그리-", "-ㅁ"] }, { text: "책", m: ["책"] }] }),
+    N("곱셈", "곱하는 셈", ["곱", { ref: "셈" }], { ...종속("'곱하는 셈'으로, '곱'이 '셈'을 꾸며 줍니다."), ...X, chunks: [{ text: "곱", m: ["곱"] }, { text: "셈", m: ["세-/동", "-ㅁ"] }] }),
+
+    /* 관형사 + 명사 */
+    N("옛말", "옛날에 쓰던 말, 옛 격언", ["옛", "말"], 종속("'옛적의 말'로, 관형사 '옛'이 '말'을 꾸며 줍니다.")),
+    N("첫마디", "처음 하는 말", ["첫", "마디"], 종속("'처음의 마디'로, 관형사 '첫'이 '마디'를 꾸며 줍니다.")),
+    N("첫해", "첫 번째 해", ["첫", "해"], 종속("'처음의 해'로, 관형사 '첫'이 '해'를 꾸며 줍니다.")),
+    N("헌신", "낡은 신", ["헌", "신"], 종속("'낡은 신'으로, 관형사 '헌'이 '신'을 꾸며 줍니다.")),
+    N("새색시", "갓 결혼한 여자", ["새", "색시"], 종속("'새로 온 색시'로, 관형사 '새'가 '색시'를 꾸며 줍니다.")),
+
+    /* 어간 + 관형사형 어미(한 글자 안 겹침) + 명사 */
+    N("찬밥", "식어서 차가운 밥", ["차-/냉", "-ㄴ", "밥"], { ...종속("'차가운 밥'으로, 앞부분 '찬'이 '밥'을 꾸며 줍니다."), ...X, chunks: [{ text: "찬", m: ["차-/냉", "-ㄴ"] }, { text: "밥", m: ["밥"] }] }),
+    N("빈손", "아무것도 가지지 않은 손", ["비-", "-ㄴ", "손"], { ...종속("'빈(비어 있는) 손'으로, 앞부분 '빈'이 '손'을 꾸며 줍니다."), ...X, chunks: [{ text: "빈", m: ["비-", "-ㄴ"] }, { text: "손", m: ["손"] }] }),
+    N("빈집", "사람이 살지 않는 집", ["비-", "-ㄴ", "집"], { ...종속("'비어 있는 집'으로, 앞부분 '빈'이 '집'을 꾸며 줍니다."), chunks: [{ text: "빈", m: ["비-", "-ㄴ"] }, { text: "집", m: ["집"] }] }),
+    N("빈말", "속뜻 없이 하는 말", ["비-", "-ㄴ", "말"], { ...종속("'속이 빈 말'로, 앞부분 '빈'이 '말'을 꾸며 줍니다."), chunks: [{ text: "빈", m: ["비-", "-ㄴ"] }, { text: "말", m: ["말"] }] }),
+    N("큰길", "크고 넓은 길", ["크-", "-ㄴ", "길"], { ...종속("'큰 길'로, 앞부분 '큰'이 '길'을 꾸며 줍니다."), chunks: [{ text: "큰", m: ["크-", "-ㄴ"] }, { text: "길", m: ["길"] }] }),
+    N("볼일", "해야 할 일", ["보-", "-ㄹ", "일"], { ...종속("'볼(처리할) 일'로, 앞부분 '볼'이 '일'을 꾸며 줍니다."), ...X, chunks: [{ text: "볼", m: ["보-", "-ㄹ"] }, { text: "일", m: ["일"] }] }),
+    N("뺄셈", "빼는 셈", ["빼-", "-ㄹ", { ref: "셈" }], { ...종속("'뺄(빼는) 셈'으로, 앞부분 '뺄'이 '셈'을 꾸며 줍니다."), ...X, chunks: [{ text: "뺄", m: ["빼-", "-ㄹ"] }, { text: "셈", m: ["세-/동", "-ㅁ"] }] }),
+
+    /* 어간 + 연결 어미 + 어간 */
+    V("피어나다", "꽃이 피어 벌어지다", ["피-", "-어", "나-"], { ...종속("'피어서 나다'로, 앞부분 '피어'가 뒤 동작 '나다'를 한정합니다."), ...X }),
+    V("솟아나다", "솟아서 나오다", ["솟-", "-아", "나-"], 종속("'솟아서 나다'로, 앞부분 '솟아'가 뒤 동작 '나다'를 한정합니다.")),
+    V("돋아나다", "돋아서 나오다", ["돋-", "-아", "나-"], 종속("'돋아서 나다'로, 앞부분 '돋아'가 뒤 동작 '나다'를 한정합니다.")),
+    V("살아남다", "죽지 않고 남다", ["살-", "-아", "남-"], { ...종속("'살아서 남다'로, 앞부분 '살아'가 뒤 동작 '남다'를 한정합니다."), ...X }),
+    V("얼어붙다", "얼어서 붙다", ["얼-", "-어", "붙-"], 종속("'얼어서 붙다'로, 앞부분 '얼어'가 뒤 동작 '붙다'의 방식을 한정합니다.")),
+    V("늘어나다", "많아지다", ["늘-", "-어", "나-"], 종속("'늘어서 나다'로, 앞부분 '늘어'가 뒤 동작 '나다'를 한정합니다.")),
+    V("줄어들다", "적어지다", ["줄-", "-어", "들-"], 종속("'줄어서 들다'로, 앞부분 '줄어'가 뒤 동작 '들다'를 한정합니다.")),
+    V("알아채다", "낌새를 알다", ["알-", "-아", "채-"], 종속("'알아서 채다'로, 앞부분 '알아'가 뒤 동작 '채다'를 한정합니다.")),
+    V("받아쓰다", "듣고 받아서 쓰다", ["받-", "-아", "쓰-"], { ...종속("'받아서 쓰다'로, 앞부분 '받아'가 뒤 동작 '쓰다'의 방식을 한정합니다."), ...X }),
+    V("잡아끌다", "잡아서 끌다", ["잡-", "-아", "끌-"], 종속("'잡아서 끌다'로, 앞부분 '잡아'가 뒤 동작 '끌다'의 방식을 한정합니다.")),
+    V("집어넣다", "집어서 넣다", ["집-", "-어", "넣-"], 종속("'집어서 넣다'로, 앞부분 '집어'가 뒤 동작 '넣다'의 방식을 한정합니다.")),
+    V("끌어안다", "끌어서 안다", ["끌-", "-어", "안-"], 종속("'끌어서 안다'로, 앞부분 '끌어'가 뒤 동작 '안다'의 방식을 한정합니다.")),
+    V("기어가다", "기어서 가다", ["기-", "-어", "가-"], 종속("'기어서 가다'로, 앞부분 '기어'가 뒤 동작 '가다'의 방식을 한정합니다.")),
+    V("스며들다", "속으로 배어 들다", ["스미-", "-어", "들-"], { ...종속("'스미어서 들다'로, 앞부분 '스며'가 뒤 동작 '들다'의 방식을 한정합니다."), ...X, chunks: [{ text: "스며", m: ["스미-", "-어"] }, { text: "들", m: ["들-"] }] }),
+    V("지켜보다", "지키면서 보다", ["지키-", "-어", "보-"], { ...종속("'지키어서 보다'로, 앞부분 '지켜'가 뒤 동작 '보다'의 방식을 한정합니다."), chunks: [{ text: "지켜", m: ["지키-", "-어"] }, { text: "보", m: ["보-"] }] }),
+    V("떠오르다", "위로 솟아오르다", ["뜨-", "-어", "오르-"], { ...종속("'뜨어서 오르다'로, 앞부분 '떠'가 뒤 동작 '오르다'를 한정합니다."), ...X, chunks: [{ text: "떠", m: ["뜨-", "-어"] }, { text: "오르", m: ["오르-"] }] }),
+
+    /* 명사 + 용언 / 부사 + 용언 */
+    V("배곯다", "배를 곯다", ["배", "곯-"], 종속("'배가 곯다'라는 주어+서술어 구성으로, '배'가 '곯다'의 주체를 한정합니다.")),
+    A("숨차다", "숨이 가쁘다", ["숨", "차-/형"], { ...종속("'숨이 차다'라는 주어+서술어 구성으로, '숨'이 '차다'의 주체를 한정합니다."), ...X }),
+    A("값비싸다", "값이 비싸다", ["값", "비싸-"], 종속("'값이 비싸다'라는 주어+서술어 구성으로, '값'이 '비싸다'의 주체를 한정합니다.")),
+    V("맛보다", "맛을 보다", ["맛", "보-"], { ...종속("'맛을 보다'라는 목적어+서술어 구성으로, '맛'이 '보다'의 대상을 한정합니다."), ...X }),
+    V("손잡다", "손을 잡다", ["손", "잡-"], 종속("'손을 잡다'라는 목적어+서술어 구성으로, '손'이 '잡다'의 대상을 한정합니다.")),
+    V("줄서다", "줄을 서다", ["줄", "서-"], 종속("'줄을 서다'라는 목적어+서술어 구성으로, '줄'이 '서다'의 대상을 한정합니다.")),
+    V("애쓰다", "애를 쓰다", ["애", "쓰-"], { ...종속("'애를 쓰다'라는 목적어+서술어 구성으로, '애'가 '쓰다'의 대상을 한정합니다."), ...X }),
+    V("못생기다", "얼굴이 잘생기지 않다", ["못", "생기-"], 종속("'못 생기다'로, 부사 '못'이 뒤 동작 '생기다'를 꾸며 줍니다.")),
+    V("잘되다", "일이 좋게 되다", ["잘", "되-/동"], 종속("'잘 되다'로, 부사 '잘'이 뒤 동작 '되다'를 꾸며 줍니다.")),
+
+    /* 비통사적 */
+    A("검누렇다", "검은빛을 띠면서 누렇다", ["검-", "누렇-"], 대등("'검고 누렇다'로, 두 상태가 대등하게 이어집니다.")),
+
+    /* 접두 파생어 */
+    A("샛노랗다", "매우 노랗다", ["샛-", "노랗-"], X),
+    A("싯누렇다", "매우 누렇다", ["싯-", "누렇-"]),
+    N("풋잠", "깊이 들지 못한 잠", ["풋-", { ref: "잠" }], { ...X, chunks: [{ text: "풋", m: ["풋-"] }, { text: "잠", m: ["자-", "-ㅁ"] }] }),
+    N("헛소리", "터무니없는 말", ["헛-", "소리"], X),
+    V("헛디디다", "발을 잘못 디디다", ["헛-", "디디-"]),
+    A("짓궂다", "장난스럽게 괴롭히다", ["짓-", "궂-"], X),
+    V("치뜨다", "눈을 위로 뜨다", ["치-", "뜨-"]),
+    V("되새기다", "다시 새기다", ["되-", "새기-"], X),
+    V("휘몰다", "세게 몰다", ["휘-", "몰-"]),
+    V("내뿜다", "밖으로 뿜다", ["내-", "뿜-"]),
+    V("내닫다", "힘차게 달리다", ["내-", "닫-"]),
+    N("맨살", "아무것도 걸치지 않은 살", ["맨-", "살"]),
+    N("참숯", "참나무로 만든 숯", ["참-", "숯"]),
+    N("참깨", "참깨", ["참-", "깨"]),
+    N("군침", "공연히 나오는 침", ["군-", "침"], X),
+    N("홀씨", "혼자서 싹을 내는 씨", ["홀-", "씨"]),
+    N("외아들", "하나뿐인 아들", ["외-", "아들"], X),
+    N("외딸", "하나뿐인 딸", ["외-", "딸"]),
+    N("외길", "하나뿐인 길", ["외-", "길"]),
+    N("덧셈", "더하는 셈", ["덧-", { ref: "셈" }], { ...X, chunks: [{ text: "덧", m: ["덧-"] }, { text: "셈", m: ["세-/동", "-ㅁ"] }] }),
+    V("빗대다", "에둘러 말하다", ["빗-", "대-"]),
+
+    /* 접미 파생어 (한정적) */
+    N("장난꾼", "장난을 잘 치는 사람", ["장난", "-꾼"]),
+    N("짐꾼", "짐을 나르는 사람", ["짐", "-꾼"]),
+    N("손가락질", "손가락으로 가리키는 짓", [{ ref: "손가락" }, "-질"], X),
+    N("곁눈질", "곁눈으로 보는 짓", [{ ref: "곁눈" }, "-질"]),
+    N("칼질", "칼로 자르는 일", ["칼", "-질"]),
+    N("빗질", "빗으로 빗는 일", ["빗", "-질"]),
+    N("붓질", "붓으로 칠하는 일", ["붓", "-질"]),
+    N("잠보", "잠이 많은 사람", [{ ref: "잠" }, "-보/한"], { chunks: [{ text: "잠", m: ["자-", "-ㅁ"] }, { text: "보", m: ["-보/한"] }] }),
+    AD("일찍이", "일찍부터", ["일찍", "-이/부한"], X),
+    AD("더욱이", "그러한 데다가 더", ["더욱", "-이/부한"]),
+
+    /* 접미 파생어 (지배적) */
+    V("반짝대다", "자꾸 반짝이다", ["반짝", "-대-"]),
+    V("출렁대다", "자꾸 출렁이다", ["출렁", "-대-"]),
+    V("끄덕대다", "자꾸 끄덕이다", ["끄덕", "-대-"]),
+    V("글썽이다", "눈물이 글썽 고이다", ["글썽", "-이-"]),
+    A("살지다", "살이 많다", ["살", "-지-"]),
+    N("뛰기", "뛰는 일", ["뛰-", "-기"]),
+    N("씻기", "씻는 일", ["씻-", "-기"]),
+    N("빼기", "빼는 셈", ["빼-", "-기"]),
+    N("나누기", "나누는 셈", ["나누-", "-기"]),
+    N("곱하기", "곱하는 셈", [{ grp: ["곱", "-하-"] }, "-기"], X),
+    N("꾸밈", "꾸미는 일", ["꾸미-", "-ㅁ"], { chunks: [{ text: "꾸밈", m: ["꾸미-", "-ㅁ"] }] }),
+    N("느낌", "느끼는 기분", ["느끼-", "-ㅁ"], { chunks: [{ text: "느낌", m: ["느끼-", "-ㅁ"] }], ...X }),
+    N("게으름", "게으른 성질", ["게으르-", "-ㅁ"], { chunks: [{ text: "게으름", m: ["게으르-", "-ㅁ"] }] }),
+    N("아픔", "아픈 느낌", ["아프-", "-ㅁ"], { chunks: [{ text: "아픔", m: ["아프-", "-ㅁ"] }], ...X }),
+    N("묶음", "묶은 덩이", ["묶-", "-음"]),
+    N("물받이", "물을 받는 그릇", [{ grp: ["물", "받-"] }, "-이"]),
+    N("턱받이", "턱 아래 대는 천", [{ grp: ["턱", "받-"] }, "-이"]),
+    N("해바라기", "해를 향해 피는 꽃", [{ grp: ["해/태양", "바라-"] }, "-기"], X),
+    N("하루살이", "하루를 사는 벌레", [{ grp: ["하루", "살-"] }, "-이"], X),
+    N("고기잡이", "고기를 잡는 일", [{ grp: ["고기", "잡-"] }, "-이"], X),
+
+    /* ======== 확장 4차: 기출·교재 정리 자료에서 ======== */
+    /* 명사 + 명사 */
+    N("개고기", "개의 고기", ["개", "고기"], { ...종속("'개의 고기'로, 명사 '개'가 '고기'를 꾸며 줍니다. 접두사 '개-'가 붙은 '개꿈'과 구별하세요."), ...X }),
+    N("불장난", "불을 가지고 노는 장난", ["불", "장난"], { ...종속("'불을 가지고 하는 장난'으로, 명사 '불'이 '장난'을 꾸며 줍니다. 접두사 '불-'이 붙은 '불개미'와 구별하세요."), ...X }),
+    N("물장난", "물을 가지고 노는 장난", ["물", "장난"], 종속("'물을 가지고 하는 장난'으로, '물'이 '장난'을 꾸며 줍니다.")),
+    N("봄나물", "봄에 나는 나물", ["봄", "나물"], 종속("'봄에 나는 나물'로, '봄'이 '나물'을 꾸며 줍니다.")),
+    N("들나물", "들에서 나는 나물", ["들", "나물"], 종속("'들에서 나는 나물'로, '들'이 '나물'을 꾸며 줍니다.")),
+    N("새언니", "새로 맞은 언니(오빠의 아내)", ["새", "언니"], { ...종속("'새로 온 언니'로, 관형사 '새'가 '언니'를 꾸며 줍니다."), ...X }),
+    N("옛길", "옛날에 다니던 길", ["옛", "길"], 종속("'옛적의 길'로, 관형사 '옛'이 '길'을 꾸며 줍니다.")),
+    N("딴생각", "다른 생각", ["딴", "생각"], 종속("'다른 생각'으로, 관형사 '딴'이 '생각'을 꾸며 줍니다.")),
+    N("날짐승", "날아다니는 짐승", ["날-", "-ㄹ", "짐승"], { ...종속("'날(나는) 짐승'으로, 앞부분 '날'이 '짐승'을 꾸며 줍니다. 접두사 '날-'이 붙은 '날고기'와 구별하세요."), ...X, chunks: [{ text: "날", m: ["날-", "-ㄹ"] }, { text: "짐승", m: ["짐승"] }] }),
+    N("생김", "생긴 모양", ["생기-", "-ㅁ"], { chunks: [{ text: "생김", m: ["생기-", "-ㅁ"] }] }),
+    N("생김새", "생긴 모양새", [{ ref: "생김" }, "-새"], { ...X, chunks: [{ text: "생김", m: ["생기-", "-ㅁ"] }, { text: "새", m: ["-새"] }] }),
+    N("튀김", "기름에 튀긴 음식", ["튀기-", "-ㅁ"], { chunks: [{ text: "튀김", m: ["튀기-", "-ㅁ"] }], ...X }),
+    N("새우튀김", "새우를 튀긴 음식", ["새우", { ref: "튀김" }], { ...종속("'새우로 만든 튀김'으로, '새우'가 '튀김'을 꾸며 줍니다."), chunks: [{ text: "새우", m: ["새우"] }, { text: "튀김", m: ["튀기-", "-ㅁ"] }] }),
+    N("살림", "집안을 꾸려 가는 일", ["살리-", "-ㅁ"], { chunks: [{ text: "살림", m: ["살리-", "-ㅁ"] }] }),
+    N("살림꾼", "살림을 잘하는 사람", [{ ref: "살림" }, "-꾼"], { ...X, chunks: [{ text: "살림", m: ["살리-", "-ㅁ"] }, { text: "꾼", m: ["-꾼"] }] }),
+    N("모임", "여럿이 모이는 일", ["모이-", "-ㅁ"], { chunks: [{ text: "모임", m: ["모이-", "-ㅁ"] }], ...X }),
+
+    /* 어간 + 연결 어미 + 어간 */
+    V("벗어나다", "속박에서 빠져나오다", ["벗-", "-어", "나-"], 종속("'벗어서 나다'로, 앞부분 '벗어'가 뒤 동작 '나다'를 한정합니다.")),
+    V("데려오다", "데리고 오다", ["데리-", "-어", "오-"], { ...종속("'데리어서 오다'로, 앞부분 '데려'가 뒤 동작 '오다'의 방식을 한정합니다."), ...X, chunks: [{ text: "데려", m: ["데리-", "-어"] }, { text: "오", m: ["오-"] }] }),
+    V("데려가다", "데리고 가다", ["데리-", "-어", "가-"], { ...종속("'데리어서 가다'로, 앞부분 '데려'가 뒤 동작 '가다'의 방식을 한정합니다."), chunks: [{ text: "데려", m: ["데리-", "-어"] }, { text: "가", m: ["가-"] }] }),
+    V("밀어내다", "밀어서 내보내다", ["밀-", "-어", "내-/동"], 종속("'밀어서 내다'로, 앞부분 '밀어'가 뒤 동작 '내다'의 방식을 한정합니다.")),
+    V("끌어내다", "끌어서 밖으로 내다", ["끌-", "-어", "내-/동"], 종속("'끌어서 내다'로, 앞부분 '끌어'가 뒤 동작 '내다'의 방식을 한정합니다.")),
+    V("쫓아내다", "쫓아서 밖으로 내다", ["쫓-", "-아", "내-/동"], 종속("'쫓아서 내다'로, 앞부분 '쫓아'가 뒤 동작 '내다'의 방식을 한정합니다.")),
+
+    /* 명사 + 용언 / 부사 + 용언 */
+    V("꽃피다", "꽃이 피다", ["꽃", "피-"], { ...종속("'꽃이 피다'라는 주어+서술어 구성으로, '꽃'이 '피다'의 주체를 한정합니다."), ...X }),
+    V("잠들다", "잠이 들다", [{ ref: "잠" }, "들-"], { ...종속("'잠이 들다'라는 주어+서술어 구성으로, '잠'이 '들다'의 주체를 한정합니다."), ...X, chunks: [{ text: "잠", m: ["자-", "-ㅁ"] }, { text: "들", m: ["들-"] }] }),
+    V("애타다", "몹시 답답하고 안타깝다", ["애", "타-/불"], 종속("'애가 타다'라는 주어+서술어 구성으로, '애'가 '타다'의 주체를 한정합니다.")),
+    A("눈부시다", "빛이 강해 바로 보기 어렵다", ["눈", "부시-"], { ...종속("'눈이 부시다'라는 주어+서술어 구성으로, '눈'이 '부시다'의 주체를 한정합니다."), ...X }),
+    V("낯익다", "여러 번 보아 익숙하다", ["낯", "익-"], 종속("'낯이 익다'라는 주어+서술어 구성으로, '낯'이 '익다'의 주체를 한정합니다.")),
+    A("남다르다", "보통 사람과 다르다", ["남", "다르-"], { ...종속("'남과 다르다'라는 부사어+서술어 구성으로, '남'이 '다르다'의 비교 대상을 한정합니다."), ...X }),
+    V("가로막다", "앞을 가로질러 막다", ["가로", "막-"], { ...종속("'가로 막다'로, 부사 '가로'가 뒤 동작 '막다'를 꾸며 줍니다."), ...X }),
+    V("곧이듣다", "말을 그대로 믿다", ["곧이", "듣-"], 종속("'곧이 듣다'로, 부사 '곧이'가 뒤 동작 '듣다'를 꾸며 줍니다.")),
+
+    /* 비통사적 */
+    N("검버섯", "노인 피부에 생기는 검은 점", ["검-", "버섯"], { ...종속("'검은 버섯(같은 점)'의 뜻으로, 어간 '검-'이 명사 '버섯'을 꾸며 줍니다."), ...X }),
+
+    /* 접두 파생어 */
+    N("홑몸", "딸린 사람이 없는 몸", ["홑-", "몸"], X),
+    V("헛돌다", "보람 없이 돌다", ["헛-", "돌-"], X),
+    N("외할머니", "어머니의 어머니", ["외-", "할머니"], X),
+    N("외기러기", "짝 없이 혼자인 기러기", ["외-", "기러기"]),
+    N("돌배", "야생 배", ["돌-/접", "배/과일"], X),
+    N("돌미나리", "야생 미나리", ["돌-/접", "미나리"]),
+    N("땅꼬마", "키가 몹시 작은 사람", ["땅-/접", "꼬마"], X),
+    N("불개미", "붉은 개미", ["불-/접", "개미"], X),
+    N("맨눈", "안경 등을 쓰지 않은 눈", ["맨-", "눈"], X),
+    V("되돌다", "다시 돌다", ["되-", "돌-"]),
+    V("휘갈기다", "마구 갈기다", ["휘-", "갈기-"], X),
+
+    /* 접미 파생어 */
+    N("싸움질", "싸우는 짓", [{ ref: "싸움" }, "-질"], { ...X, chunks: [{ text: "싸움", m: ["싸우-", "-ㅁ"] }, { text: "질", m: ["-질"] }] }),
+    N("뜨개", "실로 떠서 만드는 일", ["뜨-/편", "-개"]),
+    N("뜨개질", "실로 옷 등을 뜨는 일", [{ ref: "뜨개" }, "-질"], X),
+    N("털갈이", "털이 빠지고 새로 나는 일", [{ grp: ["털", "갈-"] }, "-이"], X),
+    N("코걸이", "코에 거는 장신구", [{ grp: ["코", "걸-"] }, "-이"]),
+    N("마음씨", "마음을 쓰는 태도", ["마음", "-씨"], X),
+    N("말씨", "말하는 태도", ["말", "-씨"]),
+    N("글씨", "쓴 글자의 모양", ["글", "-씨"], X),
+    AD("곰곰이", "깊이 생각하는 모양으로", ["곰곰", "-이/부한"], X),
+    V("생각하다", "생각을 하다", ["생각", "-하-"], X),
+    V("걱정하다", "걱정을 하다", ["걱정", "-하-"]),
+];
+
+/* =====================================================================
+   4. 단어 생성 엔진
+   ===================================================================== */
+const WordEngine = (() => {
+    const recipeByWord = {};
+    RECIPES.forEach(r => recipeByWord[r.word] = r);
+    const bank = k => { const b = BANK[k]; if (!b) throw new Error(`뱅크에 없는 형태소: ${k}`); return b; };
+    const morph = k => { const b = bank(k); return { ...b, auto: CAT[b.cat].auto, mean: CAT[b.cat].mean }; };
+    const sub = ref => { const r = recipeByWord[ref]; if (!r) throw new Error(`레시피에 없는 단어: ${ref}`); return r; };
+
+    function partKeys(p) {
+        if (typeof p === 'string') return [p];
+        if (p.ref) return recipeKeys(sub(p.ref));
+        return p.grp.flatMap(partKeys);
+    }
+    function recipeKeys(r) { const k = r.parts.flatMap(partKeys); if (r.ending) k.push(r.ending); return k; }
+
+    function partCat(p) {
+        if (typeof p === 'string') return bank(p).cat;
+        if (p.ref) { const pos = sub(p.ref).pos; return pos === "동사" ? "동사 어간" : pos === "형용사" ? "형용사 어간" : pos === "부사" ? "부사" : "명사"; }
+        const last = p.grp[p.grp.length - 1];
+        if (typeof last === 'string' && bank(last).cat === '접미사') { const ch = bank(last).change || ''; return ch.includes('동사') ? '동사 어간' : ch.includes('형용사') ? '형용사 어간' : '명사'; }
+        return partCat(last);
+    }
+    function partText(p) {
+        if (typeof p === 'string') return bank(p).form;
+        if (p.ref) return sub(p.ref).word;
+        return p.grp.map(x => stripHyphen(partText(x))).join('') + '-';
+    }
+    const grpLabel = p => p.grp.some(x => typeof x === 'string' && isAffixCat(bank(x).cat)) ? '파생 어근' : '합성 어근';
+    function partLabel(p) {
+        if (typeof p === 'string') return `'${bank(p).form}'(${bank(p).cat})`;
+        if (p.ref) { const s = build(sub(p.ref)); return `'${s.word}'(${s.typeLabel}, ${s.pos})`; }
+        return `'${partText(p)}'(${grpLabel(p)}: ${p.grp.map(partCat).join(' + ')})`;
+    }
+    // 직접 구성 요소 묶기: [어간, 어미, X] → [[어간, 어미], [X]]
+    function icGroups(parts) {
+        if (parts.length === 3 && partCat(parts[1]) === "어미") return [[parts[0], parts[1]], [parts[2]]];
+        return parts.map(p => [p]);
+    }
+
+    function syntacticCheck(recipe) {
+        const parts = recipe.parts, cats = parts.map(partCat), names = [];
+        for (let i = 0; i < parts.length; i++) {
+            names.push(cats[i] === "어미" ? bank(parts[i]).role : cats[i]);
+            if (i < parts.length - 1) {
+                const a = cats[i], b = cats[i + 1];
+                if (isStemCat(a) && b !== "어미") {
+                    const at = stripHyphen(partText(parts[i])), bt = stripHyphen(partText(parts[i + 1]));
+                    return { ok: false, pattern: names.concat(cats.slice(i + 1)).join(' + '),
+                        reason: `용언 어간 '${partText(parts[i])}' 뒤에 어미 없이 '${partText(parts[i + 1])}'(${b})이(가) 바로 붙었습니다. 우리말 문장에서는 어간 뒤에 반드시 어미가 와야 하므로(${b === "명사" ? `'${at}은 ${bt}'` : `'${at}고 ${bt}다'`}), 이 배열은 문장 구성 방식에 어긋난 비통사적 합성어입니다.` };
+                }
+                if (a === "부사" && b === "명사") return { ok: false, pattern: names.join(' + '), reason: `부사 '${partText(parts[i])}'이(가) 명사를 직접 꾸미는 배열은 우리말 문장 구성 방식에 어긋나므로 비통사적 합성어입니다.` };
+            }
+        }
+        const pattern = names.join(' + ');
+        return { ok: true, pattern, reason: `'${pattern}' 배열은 우리말 문장의 일반적인 구성 방식과 같으므로 통사적 합성어입니다.` };
+    }
+
+    /* 짜임 트리: 직접 구성 요소를 위에서 아래로 두 갈래씩 */
+    function buildTree(recipe) {
+        let cursor = 0;
+        const leaf = k => { const m = morph(k); return { kind: 'morph', morph: m, text: m.form, start: cursor, end: ++cursor, children: null }; };
+        const partNode = p => {
+            if (typeof p === 'string') return leaf(p);
+            if (p.ref) { const n = recipeNode(sub(p.ref)); n.kind = 'word'; return n; }
+            const n = partsNode(p.grp); n.kind = 'rootgroup'; n.grpLabel = grpLabel(p); return n;
+        };
+        const partsNode = parts => {
+            if (parts.length === 1) return partNode(parts[0]);
+            const start = cursor;
+            const kids = icGroups(parts).map(g => {
+                if (g.length === 2) { const s = cursor; const a = partNode(g[0]), b = partNode(g[1]); return { kind: 'inflected', start: s, end: cursor, children: [a, b], role: b.morph.role }; }
+                return partNode(g[0]);
+            });
+            return { kind: 'group', start, end: cursor, children: kids };
+        };
+        const recipeNode = r => {
+            let n = partsNode(r.parts);
+            if (r.ending) {
+                const e = leaf(r.ending);
+                const wrap = L => ({ kind: 'ending', start: L.start, end: e.end, children: [L, e], role: e.morph.role });
+                if (n.children && r.parts.length > 1) { const k = n.children; k[k.length - 1] = wrap(k[k.length - 1]); n.end = e.end; }
+                else n = wrap(n);
+            }
+            if (n.kind !== 'morph') n.kind = 'word';
+            n.word = r.word; n.recipe = r;
+            return n;
+        };
+        const root = recipeNode(recipe);
+        root.isRoot = true;
+        return root;
+    }
+
+    function build(recipe) {
+        const morphemes = recipeKeys(recipe).map(morph);
+        let chunks;
+        if (recipe.chunks) {
+            let c = 0;
+            chunks = recipe.chunks.map(ch => { const idx = ch.m.map((_, k) => c + k); c += ch.m.length; return { text: ch.text, idx }; });
+            if (recipe.ending) chunks.push({ text: bank(recipe.ending).text, idx: [morphemes.length - 1] });
+        } else chunks = morphemes.map((m, i) => ({ text: m.text, idx: [i] }));
+
+        const parts = recipe.parts;
+        const affixParts = parts.filter(p => typeof p === 'string' && isAffixCat(bank(p).cat));
+        const rootParts = parts.filter(p => typeof p !== 'string' || (!isAffixCat(bank(p).cat) && bank(p).cat !== "어미"));
+        let treeAnswers, typeLabel, syn = null, affix = null;
+        if (affixParts.length === 0 && rootParts.length === 1) { treeAnswers = ["단일어"]; typeLabel = "단일어"; }
+        else if (affixParts.length > 0) {
+            affix = bank(affixParts[0]);
+            const posLabel = affix.cat === "접두사" ? "접두 파생어" : "접미 파생어";
+            treeAnswers = ["복합어", "파생어", posLabel, affix.fn]; typeLabel = posLabel;
+        } else {
+            syn = syntacticCheck(recipe);
+            const synLabel = syn.ok ? "통사적 합성어" : "비통사적 합성어";
+            treeAnswers = ["복합어", "합성어", synLabel, recipe.rel]; typeLabel = synLabel;
+        }
+
+        // 트리 노드에 표면형과 절단 위치 부여
+        const tree = buildTree(recipe);
+        const nested = [];
+        (function decorate(n) {
+            if (n.kind === 'morph') { n.cuttable = false; return; }
+            const inside = chunks.filter(ch => ch.idx[0] >= n.start && ch.idx[ch.idx.length - 1] < n.end);
+            if (inside.length) n.text = inside.map(ch => ch.text).join('') + (n.kind === 'rootgroup' ? '-' : '');
+            else n.text = morphemes.slice(n.start, n.end).map(m => m.form).join(' + ');
+            const boundary = n.children[0].end;
+            const straddle = chunks.find(ch => ch.idx[0] < boundary && ch.idx[ch.idx.length - 1] >= boundary);
+            n.cuttable = !straddle;
+            n.cutChar = inside.filter(ch => ch.idx[ch.idx.length - 1] < boundary).reduce((s, ch) => s + ch.text.length, 0);
+            n.fusedNote = straddle ? `'${straddle.text}'은(는) 글자 안에 ${straddle.idx.map(i => `'${morphemes[i].form}'`).join(' + ')} 두 형태소가 겹쳐 있습니다 (받침이나 모음이 다른 형태소).` : null;
+            if (straddle) {
+                const forms = straddle.idx.map(i => morphemes[i].form);
+                n.inner = { text: straddle.text, forms, ...innerSplitOptions(straddle.text, forms) };
+                const second = stripHyphen(forms[forms.length - 1]);
+                n.inner.why = /^[ㄱ-ㅎ]$/.test(second)
+                    ? `받침 '${second}'이 따로 하나의 형태소(${morphemes[straddle.idx[straddle.idx.length - 1]].cat})이고, 그 앞 ${iGa(stripHyphen(forms[0]))} ${morphemes[straddle.idx[0]].cat}입니다.`
+                    : `'${forms[0]}'에 '${forms[forms.length - 1]}'가 붙으면서 소리가 줄어 '${straddle.text}'가 된 것입니다. 원래 모양대로 나눕니다.`;
+            }
+            if (n.kind === 'word' && !n.isRoot) { n.sub = build(n.recipe); if (!nested.some(x => x.word === n.word)) nested.push(n.sub); }
+            n.children.forEach(decorate);
+        })(tree);
+        const cutNodes = [];
+        (function collect(n) { if (n.children) { cutNodes.push(n); n.children.forEach(collect); } })(tree);
+
+        return { word: recipe.word, pos: recipe.pos, gloss: recipe.gloss, recipe, exam: !!recipe.exam,
+            morphemes, chunks, treeAnswers, typeLabel, syn, affix, rel: recipe.rel, relNote: recipe.relNote,
+            tree, cutNodes, nested, endingForm: recipe.ending ? bank(recipe.ending).form : null,
+            pattern: syn ? syn.pattern : parts.map(partCat).join(' + ') };
+    }
+
+    const endingLabel = n => `${n.children[0].kind === 'morph' ? (isAffixCat(n.children[0].morph.cat) ? '접미사' : '어간') : '어간'} + ${n.role}`;
+    /* 잘못 자른 경우 해설 */
+    function explainCut(problem, node) {
+        const [L, R] = node.children;
+        const desc = c => {
+            if (c.kind === 'morph') return `'${c.text}'(${c.morph.cat})`;
+            if (c.kind === 'word') return `'${c.text}'(이미 만들어진 단어: ${c.sub.typeLabel})`;
+            if (c.kind === 'inflected') return `'${c.text}'(어간 + ${c.role}, 활용형)`;
+            if (c.kind === 'rootgroup') return `'${c.text}'(${c.grpLabel})`;
+            if (c.kind === 'ending') return `'${c.text}'(${endingLabel(c)})`;
+            return `'${c.text}'`;
+        };
+        let s = `${eunNeun(node.text)} 먼저 ${desc(L)} + ${desc(R)}로 나뉩니다.`;
+        if (R.kind === 'morph' && R.morph.cat === '어미') s += `\n\n${eunNeun(node.text)} ${L.kind === 'morph' && isAffixCat(L.morph.cat) ? '접미사' : '어간'} '${L.text}'에 어미 '${R.text}'가 붙은 것이므로, 맨 마지막에 ${L.kind === 'morph' && isAffixCat(L.morph.cat) ? '접미사' : '어간'}와 어미로 나눕니다.`;
+        else if (R.kind === 'ending') s += `\n\n어미 '${R.children[1].text}'는 단어를 만드는 재료가 아니라 활용 요소이므로, 마지막 덩어리 '${R.text}'에 붙여 둔 채 단어 형성 결합부터 나눕니다. '${R.text}'는 그다음 차례에 어간과 어미로 나눕니다.`;
+        [L, R].forEach(c => {
+            const other = (c === L ? R : L).text;
+            if (c.kind === 'word') s += `\n\n${eunNeun(c.text)} ${plusList(c.sub.morphemes.map(m => m.form))} 먼저 결합해 굳어진 ${c.sub.typeLabel}이고, 그 뒤에 ${waGwa(other)} 결합했습니다. 그래서 안쪽 형태소를 먼저 떼면 안 됩니다.`;
+            if (c.kind === 'inflected') s += `\n\n${eunNeun(c.text)} 어간 '${c.children[0].text}'에 ${c.role} '${c.children[1].text}'가 붙은 활용형이라 한 덩어리로 남겨 둡니다.`;
+            if (c.kind === 'rootgroup') s += `\n\n${eunNeun(c.text)} ${plusList(c.children.map(x => x.text))} 먼저 결합한 ${c.grpLabel}(단어는 아님)이고, 그 뒤에 접사 ${iGa(other)} 붙었습니다.`;
+        });
+        return s;
+    }
+
+    /* 형성 트리 오답 해설 */
+    function explain(problem, choice) {
+        const { word, treeAnswers, morphemes, recipe, syn, affix } = problem;
+        const parts = recipe.parts;
+        const roots = morphemes.filter(m => CAT[m.cat].kind === "어근");
+        switch (choice) {
+            case "단일어": return `${eunNeun(word)} ${parts.map(partLabel).join(' + ')}처럼 둘 이상의 요소가 결합한 말이므로 복합어입니다.`;
+            case "복합어": return `${eunNeun(word)} 어근 '${roots[0].form}' 하나로만 이루어진 단일어입니다.` + (problem.endingForm ? ` 어미 ${eunNeun(problem.endingForm)} 활용을 위한 문법 요소일 뿐, 단어를 만드는 재료가 아니므로 개수에 넣지 않습니다.` : '');
+            case "합성어": {
+                let s = `${eunNeun(affix.form)} 홀로 쓰이지 못하고 어근에 ${affix.gloss}의 뜻을 더하는 접사입니다. 마지막 결합이 어근 + 접사이므로 파생어입니다.`;
+                const g = parts.find(p => typeof p !== 'string' && p.grp);
+                if (g) s += ` ${eunNeun(partText(g))} ${g.grp.map(partLabel).join(' + ')}가 결합한 ${grpLabel(g)}이지만, 그것은 안쪽 결합이고 마지막 결합은 '${partText(g)}' + '${affix.form}'입니다.`;
+                const r = parts.find(p => typeof p !== 'string' && p.ref);
+                if (r) s += ` ${eunNeun(partText(r))} 이미 만들어진 단어이고, 여기에 접사가 붙은 것입니다.`;
+                return s;
+            }
+            case "파생어": {
+                let s = `직접 구성 요소 ${parts.map(partLabel).join(', ')}이(가) 모두 어근(또는 단어)이므로 어근 + 어근 결합인 합성어입니다.`;
+                parts.filter(p => typeof p !== 'string' && p.ref).forEach(p => {
+                    const s2 = build(sub(p.ref));
+                    if (s2.affix) s += ` '${s2.word}' 안의 ${eunNeun(s2.affix.form)} 접미사지만, 그것은 ${eulReul(s2.word)} 만들 때 이미 결합한 것입니다. 마지막 결합은 '${s2.word}' + '${partText(parts[1 - parts.indexOf(p)])}'입니다.`;
+                });
+                return s;
+            }
+            case "통사적 합성어": case "비통사적 합성어": return syn.reason;
+            case "대등 합성어": case "종속 합성어": case "융합 합성어": return `${eunNeun(word)} ${treeAnswers[3]}입니다. ${problem.relNote}`;
+            case "접두 파생어": return `${eunNeun(affix.form)} 어근 뒤에 붙는 접미사이므로 접미 파생어입니다.`;
+            case "접미 파생어": return `${eunNeun(affix.form)} 어근 앞에 붙는 접두사이므로 접두 파생어입니다.`;
+            case "한정적 접사": return `${eunNeun(affix.form)} ${affix.change}로 품사(문법 범주)를 바꾸는 지배적 접사입니다. 어근에 뜻만 더하는 것이 아닙니다.`;
+            case "지배적 접사": return affix.cat === "접두사"
+                ? `접두사는 어근에 ${affix.gloss}의 뜻만 더할 뿐 품사를 바꾸지 못합니다. 그래서 접두사는 모두 한정적 접사입니다.`
+                : `${eunNeun(affix.form)} ${affix.change}로 품사를 바꾸지 않고 ${affix.gloss}의 뜻만 더하는 한정적 접사입니다.`;
+        }
+        return `'${choice}' 선택이 올바르지 않습니다.`;
+    }
+
+    function selfCheck() {
+        const errors = BANK_ERRORS.slice();
+        RECIPES.forEach(r => {
+            try {
+                const p = build(r);
+                const len = r.word.length;
+                if (!r.hidden && (len < 2 || len > 4)) errors.push(`${r.word}: 글자 수 ${len} (2~4글자만 허용)`);
+                const joined = p.chunks.map(c => c.text).join('');
+                if (joined !== r.word) errors.push(`${r.word}: 형태소 결합 결과 '${joined}'가 단어와 다름`);
+                if (p.treeAnswers[1] === "합성어" && !r.rel) errors.push(`${r.word}: 합성어인데 의미 관계(rel)가 없음`);
+                if (r.parts.length > 3 || (r.parts.length === 3 && partCat(r.parts[1]) !== "어미")) errors.push(`${r.word}: 직접 구성 요소는 둘(또는 어간+어미+X)이어야 함`);
+                if (p.tree.end !== p.morphemes.length) errors.push(`${r.word}: 트리 형태소 수 불일치`);
+                p.cutNodes.forEach(n => { if (n.cuttable && (n.cutChar <= 0 || n.cutChar >= n.text.replace(/-$/, '').length)) errors.push(`${r.word}: '${n.text}' 절단 위치 ${n.cutChar} 이상`); });
+            } catch (e) { errors.push(`${r.word}: ${e.message}`); }
+        });
+        const dup = RECIPES.map(r => r.word).filter((w, i, a) => a.indexOf(w) !== i);
+        if (dup.length) errors.push(`중복 단어: ${dup.join(', ')}`);
+        return errors;
+    }
+
+    return { build, explain, explainCut, selfCheck, all: () => RECIPES.filter(r => !r.hidden).map(build) };
+})();
+
+/* =====================================================================
+   5. 앱 상태
+   ===================================================================== */
+const PROBLEMS = WordEngine.all();
+let soundEnabled = true, currentIdx = 0, currentPhase = 1, P = null;
+let cutDone = new Set(), pendingCut = null, innerNode = null;   // Phase 1
+let tutorial = false;
+let wordWrong = 0, wordRevealed = false, lastPoints = null;
+let stats = { score: 0, words: 0, wrong: 0, best: 0, streak: 0 };
+try { Object.assign(stats, JSON.parse(localStorage.getItem('wf_stats') || '{}')); } catch (e) {}
+let pid = '';
+try { pid = localStorage.getItem('wf_pid') || ''; if (!pid) { pid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem('wf_pid', pid); } } catch (e) { pid = 'anon'; }
+function saveStats() { try { localStorage.setItem('wf_stats', JSON.stringify(stats)); } catch (e) {} updateScoreChip(); }
+function updateScoreChip() { const el = document.getElementById('score-chip'); if (el) el.innerText = `${userName ? userName + ' · ' : ''}${stats.score}점`; }
+const TUTORIAL_WORD = '콩나물밥';
+let tutorialDone = false; try { tutorialDone = localStorage.getItem('wf_tutorial') === '1'; } catch (e) {}
+let p2 = null, p3 = null;            // Phase 2, 3
+let treePath = [], nestedPaths = [];   // Phase 4
+
+
+let audioCtx = null;
+function getCtx() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
+function playSound(type) {
+    if (!soundEnabled) return;
+    try {
+        const ctx = getCtx(), now = ctx.currentTime;
+        const tone = (f, t0, d, kind, v) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = kind; o.frequency.value = f; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + d); o.start(t0); o.stop(t0 + d); };
+        if (type === 'correct') { tone(523.25, now, 0.12, 'sine', 0.18); tone(659.25, now + 0.1, 0.18, 'sine', 0.18); }
+        else if (type === 'wrong') { tone(220, now, 0.15, 'sawtooth', 0.2); tone(165, now + 0.12, 0.2, 'sawtooth', 0.2); }
+        else if (type === 'click') tone(880, now, 0.05, 'square', 0.05);
+        else if (type === 'complete') [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, now + i * 0.08, 0.25, 'triangle', 0.15));
+    } catch (e) { console.log(e); }
+}
+function toggleSound() { soundEnabled = !soundEnabled; document.getElementById('btn-sound').innerHTML = soundEnabled ? '<i class="fa-solid fa-volume-high text-sm text-slate-200"></i>' : '<i class="fa-solid fa-volume-xmark text-sm text-slate-500"></i>'; }
+function markWrong() { if (!tutorial) wordWrong++; playSound('wrong'); }
+
+/* =====================================================================
+   6. 출제 제어
+   ===================================================================== */
+const isNestedProblem = p => p.nested.length > 0 || p.cutNodes.length >= 2;
+function getPool() {
+    const f = document.getElementById('filter-selector').value;
+    const idx = PROBLEMS.map((p, i) => i);
+    if (f === 'all') return idx;
+    if (f === 'exam') return idx.filter(i => PROBLEMS[i].exam);
+    if (f === 'nested') return idx.filter(i => isNestedProblem(PROBLEMS[i]));
+    return idx.filter(i => PROBLEMS[i].typeLabel === f);
+}
+function populateWordSelector() {
+    const sel = document.getElementById('word-selector'), pool = getPool();
+    sel.innerHTML = pool.map(i => `<option value="${i}">${PROBLEMS[i].exam ? '★ ' : ''}${PROBLEMS[i].word}</option>`).join('');
+    sel.value = currentIdx;
+}
+function onFilterChange() { const pool = getPool(); if (!pool.includes(currentIdx)) loadWord(pool[0]); else populateWordSelector(); }
+function nextWord() {
+    const pool = getPool();
+    if (document.getElementById('mode-selector').value === 'random') {
+        const cand = pool.filter(i => i !== currentIdx);
+        loadWord(cand.length ? cand[Math.floor(Math.random() * cand.length)] : currentIdx);
+    } else loadWord(pool[(pool.indexOf(currentIdx) + 1) % pool.length]);
+}
+function prevWord() { const pool = getPool(); loadWord(pool[(pool.indexOf(currentIdx) - 1 + pool.length) % pool.length]); }
+function resetCurrentPuzzle() { loadWord(currentIdx); }
+
+function loadWord(index) {
+    currentIdx = index; P = PROBLEMS[currentIdx]; currentPhase = 1;
+    cutDone = new Set(); pendingCut = null; innerNode = null;
+    p2 = { assigned: new Array(P.morphemes.length).fill(null), active: 0, ok: new Set(), bad: new Set() };
+    p3 = { auto: new Array(P.morphemes.length).fill(null), mean: new Array(P.morphemes.length).fill(null), badAuto: new Set(), badMean: new Set(), okAuto: new Set(), okMean: new Set() };
+    treePath = []; nestedPaths = P.nested.map(() => []);
+    wordWrong = 0; wordRevealed = false; lastPoints = null;
+    populateWordSelector(); renderPhaseBar(); renderApp();
+}
+
+/* =====================================================================
+   7. 렌더링
+   ===================================================================== */
+const PHASES = ["1. 짜임 ✂️ 나누기", "2. 형태소 종류 🧩", "3. 형태소 성격", "4. 형성 방법"];
+function renderPhaseBar() {
+    const st = n => n === currentPhase ? 'cur' : n < currentPhase ? 'done' : 'todo';
+    const dot = n => { const k = st(n); return k === 'cur' ? 'bg-indigo-600 text-white' : k === 'done' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'; };
+    const desktop = PHASES.map((name, i) => {
+        const n = i + 1, k = st(n);
+        const cls = k === 'cur' ? 'font-bold text-indigo-400' : k === 'done' ? 'font-semibold text-emerald-400' : 'font-semibold text-slate-500';
+        return `${i ? '<i class="fa-solid fa-chevron-right text-slate-600"></i>' : ''}<div class="flex items-center space-x-2 whitespace-nowrap ${cls}"><span class="w-6 h-6 rounded-full ${dot(n)} flex items-center justify-center text-xs">${k === 'done' ? '✓' : n}</span><span>${name}</span></div>`;
+    }).join('');
+    const curName = currentPhase <= 4 ? PHASES[currentPhase - 1] : '완료 · 짜임 요약';
+    const mobile = `<div class="flex items-center gap-1.5">${PHASES.map((_, i) => { const n = i + 1; return `<span class="w-7 h-7 rounded-full ${dot(n)} flex items-center justify-center text-xs font-bold">${st(n) === 'done' ? '✓' : n}</span>`; }).join('<span class="w-3 h-px bg-slate-600"></span>')}</div><div class="font-bold text-indigo-400 text-sm truncate">${curName}</div>`;
+    const tablet = PHASES.map((name, i) => {
+        const n = i + 1, k = st(n);
+        const cls = k === 'cur' ? 'font-bold text-indigo-400' : k === 'done' ? 'font-semibold text-emerald-400' : 'font-semibold text-slate-500';
+        const short = name.replace(/^\d\. /, '').replace(/[✂️🧩]/g, '').trim();
+        return `<div class="flex items-center gap-1.5 whitespace-nowrap ${cls}"><span class="w-7 h-7 rounded-full ${dot(n)} flex items-center justify-center text-xs font-bold">${k === 'done' ? '✓' : n}</span><span class="text-xs">${short}</span></div>`;
+    }).join('<span class="flex-1 h-px bg-slate-700 mx-1"></span>');
+    document.getElementById('phase-bar').innerHTML = `<div class="hidden lg:flex w-full items-center justify-around gap-2 overflow-x-auto">${desktop}</div><div class="hidden sm:flex lg:hidden w-full items-center gap-1">${tablet}</div><div class="flex sm:hidden w-full items-center justify-between gap-3">${mobile}</div>`;
+}
+function renderApp() {
+    let html = `
+        <div class="relative bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 border-2 border-indigo-500 rounded-2xl px-6 sm:px-8 py-3 sm:py-4 text-center shadow-2xl glow-active max-w-sm w-full">
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 ${tutorial ? 'bg-amber-500' : 'bg-indigo-500'} text-white text-[10px] uppercase font-black px-3 py-0.5 rounded-full shadow whitespace-nowrap">${tutorial ? '튜토리얼 · 함께 풀어 보기' : '분석 대상 단어' + (P.exam ? ' · ★ 기출 단골' : '')}</span>
+            <h2 class="text-3xl font-black text-white mb-1 tracking-wider">${P.word}</h2>
+            <p class="text-xs text-indigo-200/80 font-medium">${currentPhase === 5 ? `[${P.pos}] ` : ''}${P.gloss}</p>
+        </div>`;
+    if (tutorial) html += tutorialTip();
+    html += currentPhase === 1 ? renderPhase1() : currentPhase === 2 ? renderPhase2() : currentPhase === 3 ? renderPhase3() : currentPhase === 4 ? renderPhase4() : renderResult();
+    document.getElementById('app-container').innerHTML = html;
+}
+function card(title, icon, sub, body, maxW = 'max-w-2xl') {
+    return `<div class="w-full ${maxW} bg-slate-900/90 border-2 border-indigo-500/60 p-3 sm:p-6 rounded-2xl shadow-2xl flex flex-col items-center space-y-4 sm:space-y-5">
+        <div class="text-center"><h3 class="text-base font-bold text-indigo-300 flex items-center justify-center gap-2"><i class="fa-solid ${icon}"></i> ${title}</h3><p class="text-xs text-slate-400 mt-1">${sub}</p></div>${body}</div>`;
+}
+const primaryBtn = (fn, label) => `<button onclick="${fn}" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-check-double"></i> ${label}</button>`;
+
+/* ---- Phase 1: 위에서 아래로 한 번에 하나씩 나누기 ---- */
+function askNodes() {
+    // 물어볼 덩어리: 자를 수 있는 마디 + 두 글자 이상인 잎(더 나눌 수 없음을 스스로 판단)
+    const out = [];
+    (function walk(n) {
+        if (n.kind === 'morph') { out.push(n); return; }
+        out.push(n);   // 글자 사이에서 자르는 마디든, 글자 안에서 겹친 마디든 모두 직접 판단
+        n.children.forEach(walk);
+    })(P.tree);
+    return out;
+}
+function currentCutNode() {
+    for (const n of askNodes()) if (!cutDone.has(n)) return n;
+    return null;
+}
+const isLeafAsk = n => n && n.kind === 'morph';
+const isFusedAsk = n => n && n.children && !n.cuttable;
+function nodeLabel(n, showAll) {
+    // 1단계에서는 품사가 새지 않도록 중립적인 이름만 쓴다
+    if (n.kind === 'morph') return showAll ? n.morph.cat : '형태소';
+    if (n.kind === 'word') return n.isRoot ? '단어' : showAll ? `단어(${n.sub.typeLabel})` : '안쪽 단어';
+    if (n.kind === 'inflected') return showAll ? `어간 + ${n.role}` : '앞 덩어리';
+    if (n.kind === 'rootgroup') return showAll ? n.grpLabel : '어근 덩어리';
+    if (n.kind === 'ending') return showAll ? `${n.children[0].kind === 'morph' ? (isAffixCat(n.children[0].morph.cat) ? '접미사' : '어간') : '어간'} + ${n.role}` : '마지막 덩어리';
+    return '';
+}
+let visibleFused = [];
+function chipsOf(text) {
+    const core = text.replace(/^-/, '').replace(/-$/, '');
+    const chars = core.split('');
+    let chips = text.startsWith('-') ? '<span class="text-slate-400 font-black mr-1">-</span>' : '';
+    chars.forEach((ch, i) => {
+        chips += `<span class="cchip inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-600 text-lg font-black">${ch}</span>`;
+        if (i < chars.length - 1) chips += `<button class="gap mx-0.5 ${pendingCut === i + 1 ? 'sel' : ''}" onclick="pickCut(${i + 1})" title="여기서 자르기"><i class="fa-solid fa-scissors"></i></button>`;
+    });
+    if (text.endsWith('-')) chips += '<span class="text-slate-400 font-black ml-1">-</span>';
+    return chips;
+}
+function renderTree(n, cur, showAll) {
+    const isCur = n === cur;
+    const opened = showAll || cutDone.has(n);
+    if (!showAll && n.children && !n.cuttable && opened) visibleFused.push(n);
+    let box;
+    if (n.kind === 'morph') {
+        const done = showAll || cutDone.has(n);
+        // 잎이든 마디든 같은 물음·같은 모양으로 보여 단일어/복합어가 새지 않게 한다
+        if (isCur) box = `<div class="tbox cur"><div class="flex items-center gap-0.5">${chipsOf(stripHyphen(n.text))}</div><div class="text-[10px] text-indigo-300 mt-1">이 덩어리를 나눌 수 있을까요?</div></div>`;
+        else box = `<div class="tbox ${done && !showAll ? 'done' : showAll ? 'leaf' : ''}"><div class="font-black text-amber-300 text-sm">${showAll ? n.text : stripHyphen(n.text)}</div><div class="text-[10px] ${done ? 'text-slate-500' : 'text-slate-600'}">${showAll ? n.morph.cat : done ? '형태소' : '대기'}</div></div>`;
+    } else if (isCur) {
+        box = `<div class="tbox cur"><div class="flex items-center gap-0.5">${chipsOf(stripHyphen(n.text))}</div><div class="text-[10px] text-indigo-300 mt-1">이 덩어리를 나눌 수 있을까요?</div></div>`;
+    } else {
+        box = `<div class="tbox ${opened ? 'done' : ''}"><div class="font-black text-sm ${opened ? 'text-emerald-300' : 'text-slate-200'}">${showAll ? n.text : stripHyphen(n.text)}</div><div class="text-[10px] text-slate-500">${opened || showAll ? nodeLabel(n, showAll) : '대기'}</div>${opened && !n.cuttable ? `<div class="text-[10px] text-sky-300">글자 안에서 나눔</div>` : ''}</div>`;
+    }
+    let kids = '';
+    if (opened && n.children && !isCur) kids = `<div class="tkids">${n.children.map(c => renderTree(c, cur, showAll)).join('')}</div>`;
+    return `<div class="tnode">${box}${kids}</div>`;
+}
+function renderPhase1() {
+    const cur = currentCutNode();
+    visibleFused = [];
+    const treeHtml = renderTree(P.tree, cur, false);
+    const fused = visibleFused;
+    const cutBtn = pendingCut
+        ? `<button onclick="confirmCut()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-scissors"></i> 여기서 자르기 확인</button>`
+        : `<button disabled class="flex-1 py-3 bg-slate-800 text-slate-500 rounded-xl font-bold text-sm border border-slate-700 flex items-center justify-center gap-2 cursor-not-allowed"><i class="fa-solid fa-scissors"></i> 자를 곳을 고르면 확인 가능</button>`;
+    const innerBtn = `<button onclick="confirmInner()" class="flex-1 py-3 bg-slate-800 hover:bg-sky-700 text-slate-200 hover:text-white rounded-xl font-bold text-sm border border-slate-600 hover:border-sky-500 transition flex items-center justify-center gap-2" title="받침이나 모음 단위로 한 글자 안에 두 형태소가 겹쳐 있을 때"><i class="fa-solid fa-wand-magic-sparkles"></i> 글자 안에서 나누기</button>`;
+    const noCutBtn = `<button onclick="confirmNoCut()" class="flex-1 py-3 bg-slate-800 hover:bg-emerald-700 text-slate-200 hover:text-white rounded-xl font-bold text-sm border border-slate-600 hover:border-emerald-500 transition flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> 더 나눌 수 없음</button>`;
+    let innerPanel = '';
+    if (innerNode && innerNode === cur && innerNode.inner) {
+        const io = innerNode.inner;
+        innerPanel = `<div class="w-full bg-sky-950/40 border-2 border-sky-500/60 rounded-2xl p-4 space-y-3">
+            <div class="text-sm font-bold text-sky-200 text-center">'${io.text}'을(를) 글자 안에서 어떻게 나눌까요?</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${io.options.map((o, k) => `<button onclick="pickInner(${k})" class="py-3 px-3 bg-slate-800 hover:bg-sky-700 text-slate-100 hover:text-white rounded-xl font-black text-base border border-slate-600 hover:border-sky-400 transition tracking-wider">${o}</button>`).join('')}</div>
+            <button onclick="innerNode = null; renderApp();" class="w-full py-2 text-xs text-slate-400 hover:text-slate-200">취소</button>
+        </div>`;
+    }
+    const body = `
+        <div class="w-full overflow-x-auto py-2"><div class="min-w-max mx-auto flex justify-center">${treeHtml}</div></div>
+        ${innerPanel || `<div class="w-full flex flex-col sm:flex-row gap-2">${cutBtn}${innerBtn}${noCutBtn}</div>`}
+        ${fused.length ? `<div class="w-full bg-sky-950/40 border border-sky-500/40 rounded-xl p-3 text-[11px] text-sky-200">${fused.map(n => n.fusedNote).join('<br>')}</div>` : ''}
+        <p class="hint text-[11px] text-slate-500 text-center">한 번에 한 군데만 자릅니다. 마지막에 결합한 두 부분(직접 구성 요소)으로 먼저 나누고, 그다음 안쪽 덩어리를 차례로 나눕니다. 용언의 어미 '-다'는 마지막 덩어리에 붙여 두었다가 맨 끝에 뗍니다. 모든 덩어리(한 글자짜리도)는 더 나눌 수 있는지 판단해야 끝납니다. '큰'(크-+-ㄴ), '잠'(자-+-ㅁ)처럼 받침이나 모음 안에 두 형태소가 겹쳐 있으면 '글자 안에서 나누기'를 고르세요.</p>`;
+    return card("PHASE 1: 짜임 ✂️ 나누기", "fa-scissors", "하이라이트된 덩어리를 글자 사이에서 자를 수 있으면 가위를, 글자 안에 형태소가 겹쳐 있으면 '글자 안에서 나누기'를, 더 못 나누면 '더 나눌 수 없음'을 누르세요.", body);
+}
+function pickCut(pos) { innerNode = null; pendingCut = pendingCut === pos ? null : pos; playSound('click'); renderApp(); }
+function confirmCut() { if (!pendingCut) return; cutAt(pendingCut); }
+function advanceIfDone() {
+    if (!currentCutNode()) { renderApp(); setTimeout(() => { currentPhase = 2; renderPhaseBar(); renderApp(); }, 500); }
+    else renderApp();
+}
+function confirmNoCut() {
+    pendingCut = null;
+    const n = currentCutNode();
+    if (!n) { playSound('correct'); currentPhase = 2; renderPhaseBar(); renderApp(); return; }
+    if (isLeafAsk(n)) { playSound('correct'); cutDone.add(n); advanceIfDone(); return; }
+    markWrong(); renderApp();
+    if (isFusedAsk(n)) showExplanationModal(`${eunNeun(n.text)} 글자로는 못 잘라도 형태소는 둘입니다.\n\n${n.fusedNote}\n\n'글자 안에서 나누기'를 누르세요.`);
+    else showExplanationModal(`${eunNeun(n.text)} 더 나눌 수 있습니다.\n\n` + WordEngine.explainCut(P, n));
+}
+function confirmInner() {
+    pendingCut = null;
+    const n = currentCutNode();
+    if (!n) return;
+    if (isFusedAsk(n)) { innerNode = n; playSound('click'); renderApp(); return; }
+    markWrong(); renderApp();
+    if (isLeafAsk(n)) showExplanationModal(`${eunNeun(n.text)} 뜻을 가진 가장 작은 단위(형태소) 하나입니다. 글자 안에 다른 형태소가 숨어 있지 않으니 '더 나눌 수 없음'을 누르세요.`);
+    else showExplanationModal(`${eunNeun(n.text)} 글자 사이에서 나눌 수 있습니다.\n\n` + WordEngine.explainCut(P, n));
+}
+function pickInner(k) {
+    const n = innerNode;
+    if (!n || !n.inner) return;
+    const choice = n.inner.options[k];
+    if (choice === n.inner.correct) { playSound('correct'); innerNode = null; cutDone.add(n); advanceIfDone(); return; }
+    markWrong();
+    showExplanationModal(`'${choice}'이(가) 아닙니다.\n\n${eunNeun(n.inner.text)} ${n.inner.correct}${hasBatchim(n.inner.correct) ? '으로' : '로'} 나뉩니다. ${n.inner.why}`);
+}
+function cutAt(charPos) {
+    pendingCut = null;
+    const n = currentCutNode();
+    if (!n) return;
+    if (isLeafAsk(n)) {
+        markWrong(); renderApp();
+        const core = stripHyphen(n.text), a = core.slice(0, charPos), b = core.slice(charPos);
+        showExplanationModal(`${eunNeun(n.text)} 뜻을 가진 가장 작은 단위(형태소)입니다.\n\n${waGwa(a)} '${b}'${hasBatchim(b) ? '으로' : '로'} 나누면 어느 쪽도 홀로 뜻을 갖지 못하므로 더 나눌 수 없습니다. '더 나눌 수 없음'을 누르세요.` + (STEM_NOTES[n.morph.key] ? `\n\n※ ${STEM_NOTES[n.morph.key]}` : ''));
+        return;
+    }
+    if (isFusedAsk(n)) { markWrong(); renderApp(); showExplanationModal(`${eunNeun(n.text)} 글자 사이에서는 자를 수 없습니다.\n\n${n.fusedNote}\n\n'글자 안에서 나누기'를 누르세요.`); return; }
+    if (charPos === n.cutChar) { playSound('correct'); cutDone.add(n); advanceIfDone(); }
+    else { markWrong(); renderApp(); showExplanationModal(WordEngine.explainCut(P, n)); }
+}
+
+/* ---- Phase 2: 형태소 종류 ---- */
+function renderPhase2() {
+    let slots = `<div class="w-full grid cols-${Math.min(P.morphemes.length, 4)} gap-3">`;
+    P.morphemes.forEach((m, i) => {
+        const val = p2.assigned[i];
+        const state = p2.ok.has(i) ? 'ok' : p2.bad.has(i) ? 'bad' : val ? 'filled' : '';
+        const active = i === p2.active && !p2.ok.has(i) ? 'active' : '';
+        slots += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex flex-col items-center space-y-2">
+            <div class="text-[11px] text-slate-400 font-medium">형태소 ${i + 1}</div>
+            <div class="text-lg font-black text-amber-300 bg-slate-900 px-3 py-1 rounded-lg border border-slate-700 w-full text-center">${stripHyphen(m.form)}</div>
+            <div onclick="selectSlot(${i})" class="slot ${state} ${active} w-full rounded-xl flex items-center justify-center p-2">
+                ${val ? `<span class="text-xs font-bold ${state === 'ok' ? 'text-emerald-200' : state === 'bad' ? 'text-rose-200' : 'text-white'} flex items-center gap-1.5">${state === 'ok' ? '<i class="fa-solid fa-check"></i>' : ''}${val}${state === 'ok' ? '' : '<i class="fa-solid fa-xmark text-[10px] opacity-70"></i>'}</span>` : `<span class="text-xs text-slate-500 flex items-center gap-1"><i class="fa-solid fa-plus text-[10px]"></i> 종류 배치</span>`}
+            </div></div>`;
+    });
+    slots += `</div>`;
+    const bank = `<div class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+            <div class="text-xs font-bold text-slate-400 mb-2.5 flex items-center gap-1"><i class="fa-solid fa-cubes"></i> 품사·문법 요소 블록 (선택된 슬롯에 들어갑니다):</div>
+            <div class="flex flex-wrap gap-2 justify-center">${CATS.map((c, k) => `<button onclick="assignCat(${k})" class="block-chip bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 border border-slate-600 text-slate-100 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md transition">🧩 ${c}</button>`).join('')}</div>
+        </div>` + primaryBtn('validatePhase2()', '형태소 종류 검증');
+    return card("PHASE 2: 형태소 종류 🧩 배치", "fa-puzzle-piece", "각 형태소가 어떤 품사 또는 문법 요소인지 블록을 골라 채우세요. 슬롯을 누르면 그 자리를 다시 고를 수 있습니다.", slots + bank);
+}
+function selectSlot(i) { if (p2.ok.has(i)) return; if (p2.assigned[i] !== null) { p2.assigned[i] = null; p2.bad.delete(i); } p2.active = i; playSound('click'); renderApp(); }
+function assignCat(k) {
+    let i = p2.active;
+    if (i === null || i >= P.morphemes.length || p2.ok.has(i)) { i = p2.assigned.findIndex((v, j) => v === null && !p2.ok.has(j)); if (i === -1) return; }
+    p2.assigned[i] = CATS[k]; p2.bad.delete(i);
+    const next = p2.assigned.findIndex((v, j) => v === null && !p2.ok.has(j));
+    p2.active = next === -1 ? null : next;
+    playSound('click'); renderApp();
+}
+function validatePhase2() {
+    if (p2.assigned.includes(null)) { playSound('wrong'); showExplanationModal("모든 형태소에 종류 블록을 배치해 주세요."); return; }
+    const wrong = [];
+    P.morphemes.forEach((m, i) => { if (p2.assigned[i] === m.cat) p2.ok.add(i); else { p2.bad.add(i); wrong.push(i); } });
+    if (!wrong.length) { playSound('correct'); currentPhase = 3; renderPhaseBar(); renderApp(); return; }
+    markWrong(); p2.active = wrong[0]; renderApp();
+    showExplanationModal(`빨간 슬롯 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(i => { const m = P.morphemes[i], c = p2.assigned[i]; return `• '${m.form}' → ${c}?  ${CAT[c].test(m.text)}`; }).join('\n\n'));
+}
+
+/* ---- Phase 3: 형태소 성격 ---- */
+function renderPhase3() {
+    const btn = (kind, i, label, val, bad, ok) => { const on = val === label; const cls = ok && on ? 'ok' : bad && on ? 'bad' : on ? 'on' : ''; return `<button ${ok ? 'disabled' : ''} onclick="pickProp('${kind}', ${i}, '${label}')" class="pick ${cls} flex-1 px-2 py-2.5 rounded-lg text-xs font-bold border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 whitespace-nowrap">${label}</button>`; };
+    let cards = `<div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">`;
+    P.morphemes.forEach((m, i) => {
+        cards += `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+            <div class="flex items-baseline gap-2"><span class="font-black text-amber-300 text-xl">${stripHyphen(m.form)}</span><span class="text-[11px] text-slate-500">${m.cat}</span></div>
+            <div class="flex items-center gap-2"><span class="text-[11px] text-slate-400 w-12 shrink-0">자립성</span>${btn('auto', i, '자립 형태소', p3.auto[i], p3.badAuto.has(i), p3.okAuto.has(i))}${btn('auto', i, '의존 형태소', p3.auto[i], p3.badAuto.has(i), p3.okAuto.has(i))}</div>
+            <div class="flex items-center gap-2"><span class="text-[11px] text-slate-400 w-12 shrink-0">의미</span>${btn('mean', i, '실질 형태소', p3.mean[i], p3.badMean.has(i), p3.okMean.has(i))}${btn('mean', i, '형식 형태소', p3.mean[i], p3.badMean.has(i), p3.okMean.has(i))}</div>
+        </div>`;
+    });
+    cards += `</div>` + primaryBtn('validatePhase3()', '형태소 성격 검증');
+    return card("PHASE 3: 형태소의 성격", "fa-cubes", "각 형태소가 홀로 쓰일 수 있는지(자립/의존), 실질적 뜻을 지니는지(실질/형식) 고르세요.", cards);
+}
+function pickProp(kind, i, label) {
+    if (kind === 'auto') { if (p3.okAuto.has(i)) return; p3.auto[i] = label; p3.badAuto.delete(i); }
+    else { if (p3.okMean.has(i)) return; p3.mean[i] = label; p3.badMean.delete(i); }
+    playSound('click'); renderApp();
+}
+function validatePhase3() {
+    if (p3.auto.includes(null) || p3.mean.includes(null)) { playSound('wrong'); showExplanationModal("모든 형태소의 자립성과 의미 성격을 골라 주세요."); return; }
+    let wa = 0, wm = 0;
+    P.morphemes.forEach((m, i) => {
+        if (p3.auto[i] === m.auto) p3.okAuto.add(i); else { p3.badAuto.add(i); wa++; }
+        if (p3.mean[i] === m.mean) p3.okMean.add(i); else { p3.badMean.add(i); wm++; }
+    });
+    if (!wa && !wm) { playSound('correct'); currentPhase = 4; renderPhaseBar(); renderApp(); return; }
+    markWrong(); renderApp();
+    const tips = [];
+    if (wa) tips.push(`[자립성 ${wa}개] 문장에서 홀로 쓰일 수 있으면 자립, 다른 말에 붙어야만 쓰이면 의존이에요. 체언·관형사·부사는 자립, 어간·어미·접사는 의존입니다. 어간도 '-다' 없이는 못 쓰니 의존이에요!`);
+    if (wm) tips.push(`[의미 ${wm}개] 대상·동작·상태 같은 구체적 뜻이 있으면 실질, 문법적 기능만 하면 형식이에요. 어근(체언·어간 등)은 실질, 어미·접사는 형식입니다.`);
+    showExplanationModal(tips.join('\n\n'));
+}
+
+/* ---- Phase 4: 형성 방법 트리 (+ 안쪽 단어 분류) ---- */
+function treeSteps(path) {
+    const steps = [{ title: "1단계: 어근의 수", options: ["단일어", "복합어"] }];
+    if (path[0] === "복합어") {
+        steps.push({ title: "2단계: 마지막 결합이 어근+어근인가, 어근+접사인가", options: ["합성어", "파생어"] });
+        if (path[1] === "합성어") { steps.push({ title: "3단계: 배열 방식이 문장 구성 규칙에 맞는가", options: ["통사적 합성어", "비통사적 합성어"] }); steps.push({ title: "4단계: 어근 간 의미 관계", options: ["대등 합성어", "종속 합성어", "융합 합성어"] }); }
+        else if (path[1] === "파생어") { steps.push({ title: "3단계: 접사의 위치", options: ["접두 파생어", "접미 파생어"] }); steps.push({ title: "4단계: 접사의 기능 (뜻만 더함 / 품사를 바꿈)", options: ["한정적 접사", "지배적 접사"] }); }
+    }
+    return steps;
+}
+function renderPhase4() {
+    const steps = treeSteps(treePath), mainDone = treePath.length === P.treeAnswers.length;
+    let tree = `<div class="w-full flex flex-col items-center space-y-1">`;
+    steps.forEach((st, lv) => {
+        const confirmed = lv < treePath.length, current = lv === treePath.length;
+        if (!confirmed && !current) return;
+        if (lv > 0) tree += `<div class="w-1 h-6 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full my-1"></div>`;
+        tree += `<div class="w-full bg-slate-950 border ${confirmed ? 'border-emerald-500/60' : 'border-indigo-500/60'} p-4 rounded-xl flex flex-col items-center space-y-2"><div class="text-[11px] font-bold text-slate-400 tracking-wider">${st.title}</div><div class="flex flex-wrap gap-3 justify-center">`;
+        st.options.forEach((opt, k) => {
+            if (confirmed) { if (treePath[lv] === opt) tree += `<div class="bg-emerald-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2"><i class="fa-solid fa-circle-check"></i> ${opt}</div>`; }
+            else tree += `<button onclick="selectTreeNode(${lv}, ${k})" class="bg-slate-800 hover:bg-indigo-600 border border-slate-600 text-slate-100 hover:text-white px-5 py-2.5 md:px-6 md:py-3 rounded-xl text-xs md:text-sm font-bold shadow-md transition hover:scale-105 active:scale-95">${opt}</button>`;
+        });
+        tree += `</div></div>`;
+    });
+    if (mainDone && P.nested.length) {
+        // 안쪽 단어도 같은 형성 트리를 끝까지 묻는다 (앞 단어를 마쳐야 다음 단어)
+        let unlocked = true;
+        P.nested.forEach((s, i) => {
+            if (!unlocked) return;
+            const path = nestedPaths[i], done = path.length === s.treeAnswers.length, steps = treeSteps(path);
+            tree += `<div class="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full my-1"></div>
+                <div class="w-full rounded-2xl border-2 ${done ? 'border-emerald-500/50' : 'border-purple-500/60'} bg-purple-950/20 p-3 space-y-1">
+                <div class="text-[11px] font-bold text-purple-300 tracking-wider text-center mb-1"><i class="fa-solid fa-magnifying-glass mr-1"></i>안쪽 단어 '${s.word}'(${s.morphemes.map(m => m.form).join(' + ')})의 짜임</div>`;
+            steps.forEach((st, lv) => {
+                const confirmed = lv < path.length, current = lv === path.length;
+                if (!confirmed && !current) return;
+                if (lv > 0) tree += `<div class="w-1 h-4 bg-purple-600/70 rounded-full mx-auto"></div>`;
+                tree += `<div class="w-full bg-slate-950 border ${confirmed ? 'border-emerald-500/60' : 'border-purple-500/60'} p-3 rounded-xl flex flex-col items-center space-y-2"><div class="text-[11px] font-bold text-slate-400 tracking-wider">${st.title}</div><div class="flex flex-wrap gap-2 justify-center">`;
+                st.options.forEach((opt, k) => {
+                    if (confirmed) { if (path[lv] === opt) tree += `<div class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg flex items-center gap-2"><i class="fa-solid fa-circle-check"></i> ${opt}</div>`; }
+                    else tree += `<button onclick="selectNested(${i}, ${lv}, ${k})" class="bg-slate-800 hover:bg-purple-600 border border-slate-600 text-slate-100 hover:text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-md transition hover:scale-105 active:scale-95">${opt}</button>`;
+                });
+                tree += `</div></div>`;
+            });
+            tree += `</div>`;
+            if (!done) unlocked = false;
+        });
+    }
+    tree += `</div><div class="w-full overflow-x-auto py-2"><div class="min-w-max mx-auto flex justify-center">${renderTree(P.tree, null, true)}</div></div>`;
+    return card("PHASE 4: 형성 방법 트리", "fa-sitemap", "나눈 짜임을 바탕으로 이 단어가 어떤 방법으로 만들어졌는지 위에서 아래로 분류하세요.", tree);
+}
+function selectTreeNode(lv, k) {
+    const choice = treeSteps(treePath)[lv].options[k];
+    if (choice === P.treeAnswers[lv]) {
+        playSound('correct'); treePath.push(choice);
+        if (treePath.length === P.treeAnswers.length && !P.nested.length) setTimeout(finishWord, 350);
+        renderApp();
+    } else { markWrong(); showExplanationModal(WordEngine.explain(P, choice)); }
+}
+function selectNested(i, lv, k) {
+    const s = P.nested[i], path = nestedPaths[i], choice = treeSteps(path)[lv].options[k];
+    if (choice === s.treeAnswers[lv]) {
+        playSound('correct'); path.push(choice);
+        if (nestedPaths.every((pp, j) => pp.length === P.nested[j].treeAnswers.length)) setTimeout(finishWord, 350);
+        renderApp();
+    } else { markWrong(); showExplanationModal(`안쪽 단어 ${eunNeun(s.word)} ${s.typeLabel}입니다.\n\n` + WordEngine.explain(s, choice)); }
+}
+
+/* ---- 튜토리얼 안내 ---- */
+function tutorialTip() {
+    let step = '', text = '';
+    if (currentPhase === 1) {
+        const cur = currentCutNode();
+        if (cur && cur.isRoot) { step = '1단계 ① 마지막에 결합한 두 부분'; text = `단어는 한 번에 두 갈래씩 나눕니다. '콩나물밥'은 <b>콩나물</b>을 넣어 지은 <b>밥</b>이니, 마지막에 결합한 것은 [콩나물] + [밥]이에요. <b>'물'과 '밥' 사이의 가위</b>를 고르고 <b>'여기서 자르기 확인'</b>을 누르세요. '콩'과 '나물' 사이를 먼저 자르면 안 됩니다!`; }
+        else if (cur && cur.kind === 'morph') { step = '1단계 ③ 더 나눌 수 있을까?'; text = `이제 <b>'${cur.text}'</b>이(가) 더 나뉘는지 판단합니다. '${cur.text}'을(를) 글자로 쪼개면 어느 쪽도 뜻이 없으니 뜻을 가진 가장 작은 단위, 곧 형태소예요. <b>'더 나눌 수 없음'</b>을 누르세요. 한 글자짜리 '콩', '밥'도 똑같이 판단합니다. (잠처럼 한 글자 안에 두 형태소가 겹친 경우도 있으니까요.)`; }
+        else if (cur) { step = '1단계 ② 안쪽 덩어리 나누기'; text = `이제 안쪽 덩어리 <b>'콩나물'</b> 차례예요. '콩나물'은 콩에서 자란 나물이니 [콩] + [나물]. <b>'콩'과 '나' 사이의 가위</b>를 고르고 확인하세요. 그다음 '콩', '나물', '밥'이 차례로 더 나뉘는지 물어요.`; }
+        else { step = '1단계 완료'; text = `짜임 트리가 완성됐어요. 콩나물밥 → [콩나물]+[밥] → [콩]+[나물]. 형태소는 콩, 나물, 밥 세 개입니다.`; }
+    } else if (currentPhase === 2) {
+        step = '2단계 형태소 종류'; text = `잎에 남은 형태소가 각각 어떤 품사(문법 요소)인지 고릅니다. <b>콩, 나물, 밥</b>은 모두 사물의 이름이니 <b>'명사'</b>예요. 아래 블록에서 <b>🧩 명사를 세 번</b> 누르면 슬롯이 차례로 채워집니다. 그다음 <b>'형태소 종류 검증'</b>을 누르세요.`;
+    } else if (currentPhase === 3) {
+        step = '3단계 형태소 성격'; text = `명사는 문장에서 혼자 쓰일 수 있으니 <b>자립 형태소</b>, 구체적인 뜻이 있으니 <b>실질 형태소</b>예요. 세 줄 모두 <b>자립 · 실질</b>을 고르고 <b>'형태소 성격 검증'</b>을 누르세요. (참고: 어간은 실질이지만 혼자 못 쓰니 의존, 어미·접사는 의존이면서 형식이에요.)`;
+    } else if (currentPhase === 4) {
+        const n = treePath.length;
+        if (n === 0) { step = '4단계 ① 어근의 수'; text = `어근(실질적 뜻을 가진 중심 부분)이 콩나물과 밥, 둘 이상이니 <b>'복합어'</b>를 고르세요.`; }
+        else if (n === 1) { step = '4단계 ② 결합 요소'; text = `마지막 결합 [콩나물] + [밥]은 어근 + 어근이에요. 접사가 없으니 <b>'합성어'</b>입니다.`; }
+        else if (n === 2) { step = '4단계 ③ 배열 방식'; text = `'명사 + 명사'는 우리말 문장에서도 자연스러운 배열이에요(예: 학교 운동장). 그래서 <b>'통사적 합성어'</b>입니다. 어미 없이 어간이 바로 붙는 '덮밥' 같은 말이 비통사적이에요.`; }
+        else if (n === 3) { step = '4단계 ④ 의미 관계'; text = `'콩나물로 지은 밥'처럼 앞말이 뒷말을 꾸며 주니 <b>'종속 합성어'</b>예요. 손발처럼 나란하면 대등, 바늘방석처럼 새 뜻이 생기면 융합입니다.`; }
+        else {
+            const m = (nestedPaths[0] || []).length;
+            step = '4단계 ⑤ 안쪽 단어';
+            text = m === 0 ? `이제 안쪽 단어 <b>'콩나물'</b>의 짜임도 똑같이 분류합니다. 콩과 나물, 어근이 둘이니 <b>'복합어'</b>예요.`
+                : m === 1 ? `콩 + 나물은 어근 + 어근이니 <b>'합성어'</b>입니다.`
+                : m === 2 ? `명사 + 명사 배열이니 <b>'통사적 합성어'</b>예요.`
+                : `'콩에서 자란 나물'로 앞말이 뒷말을 꾸미니 <b>'종속 합성어'</b>입니다.`;
+        }
+    } else {
+        step = '튜토리얼 완료 🎉'; text = `짜임 나누기 → 형태소 종류 → 형태소 성격 → 형성 방법, 이 순서로 모든 단어를 분석합니다. 이제 실제 문제를 풀어 보세요!`;
+    }
+    return `<div class="w-full max-w-2xl bg-amber-950/50 border-2 border-amber-500/60 rounded-2xl p-4 text-xs sm:text-sm text-amber-100 leading-relaxed shadow-lg">
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+            <span class="font-black text-amber-300"><i class="fa-solid fa-graduation-cap mr-1"></i> 튜토리얼 · ${step}</span>
+            <button onclick="exitTutorial()" class="text-[11px] text-amber-300/80 hover:text-white border border-amber-500/40 rounded-lg px-2 py-0.5">나가기</button>
+        </div>
+        <div>${text}</div>
+        ${currentPhase === 5 ? `<button onclick="exitTutorial(true)" class="mt-3 w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl font-black text-sm shadow-lg transition"><i class="fa-solid fa-play mr-1"></i> 이제 시작하기</button>` : ''}
+    </div>`;
+}
+function startTutorial() {
+    tutorial = true; playSound('correct');
+    document.getElementById('start-screen').classList.add('hidden');
+    ['phase-bar', 'app-container'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+    document.getElementById('control-bar').classList.add('hidden');
+    document.getElementById('filter-selector').value = 'all';
+    loadWord(PROBLEMS.findIndex(p => p.word === TUTORIAL_WORD));
+    window.scrollTo(0, 0);
+}
+function exitTutorial(goPlay) {
+    tutorial = false; 
+    if (goPlay) startWith('all'); else showStart();
+}
+
+/* ---- 완료 ---- */
+function finishWord() {
+    currentPhase = 5;
+    if (tutorial) { tutorialDone = true; try { localStorage.setItem('wf_tutorial', '1'); } catch (e) {} }
+    else {
+        let pts = wordRevealed ? 0 : Math.max(3, 10 - 2 * wordWrong);
+        if (isNestedProblem(P)) pts = Math.round(pts * 1.5);
+        lastPoints = pts;
+        stats.score += pts; stats.words += 1; stats.wrong += wordWrong;
+        stats.streak = (wordWrong === 0 && !wordRevealed) ? stats.streak + 1 : 0;
+        stats.best = Math.max(stats.best, stats.streak);
+        saveStats(); submitScore();
+    }
+    renderPhaseBar(); renderApp(); playSound('complete');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function renderResult() {
+    const body = `
+        <div class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            ${lastPoints !== null ? `<div class="flex items-center justify-between bg-indigo-950/40 border border-indigo-500/40 rounded-xl px-4 py-2"><span class="text-xs text-slate-300">이 단어 점수 <span class="text-[10px] text-slate-500">(오답 ${wordWrong}번${wordRevealed ? ' · 정답 보기 사용' : ''}${isNestedProblem(P) ? ' · 여러 층 ×1.5' : ''})</span></span><span class="text-xl font-black text-indigo-300">+${lastPoints}점</span><span class="text-xs text-slate-400">누적 ${stats.score}점 · 연속 ${stats.streak}</span></div>` : ''}
+            <div class="text-[11px] font-bold text-slate-400">짜임 트리 (직접 구성 요소를 위에서 아래로)</div>
+            <div class="w-full overflow-x-auto py-1"><div class="min-w-max mx-auto flex justify-center">${renderTree(P.tree, null, true)}</div></div>
+            <div class="text-center text-xs text-emerald-300 font-bold">${P.treeAnswers.join(' → ')}</div>
+            ${P.nested.map(s => `<div class="text-center text-[11px] text-purple-300">안쪽 단어 '${s.word}': ${s.treeAnswers.join(' → ')}</div>`).join('')}
+            ${P.syn ? `<div class="text-[11px] text-slate-400 text-center">배열: ${P.pattern} — ${P.syn.reason}</div>` : ''}
+            ${P.affix ? `<div class="text-[11px] text-slate-400 text-center">'${P.affix.form}': ${P.affix.gloss}의 뜻 ${P.affix.change ? `(${P.affix.change})` : '(품사 유지)'} → ${P.affix.fn}</div>` : ''}
+            ${P.relNote ? `<div class="text-[11px] text-slate-400 text-center">${P.relNote}</div>` : ''}
+        </div>
+        <div class="w-full overflow-x-auto"><table class="w-full text-xs border-separate border-spacing-y-1">
+            <thead><tr class="text-slate-400"><th class="text-left px-2">형태소</th><th class="px-2">종류</th><th class="px-2">자립성</th><th class="px-2">의미</th><th class="text-left px-2">뜻/기능</th></tr></thead>
+            <tbody>${P.morphemes.map(m => `<tr class="bg-slate-950"><td class="px-2 py-1.5 font-black text-amber-300">${m.form}</td><td class="px-2 text-center">${m.cat}${m.role ? `<div class="text-[10px] text-slate-500">${m.role}</div>` : ''}</td><td class="px-2 text-center">${m.auto}</td><td class="px-2 text-center">${m.mean}</td><td class="px-2 text-slate-400">${m.gloss}${m.fn ? ` · ${m.fn}` : ''}</td></tr>`).join('')}</tbody>
+        </table></div>
+        <div class="w-full flex gap-2">
+            <button onclick="resetCurrentPuzzle()" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-sm border border-slate-600 transition flex items-center justify-center gap-2"><i class="fa-solid fa-rotate-right"></i> 다시 풀기</button>
+            <button onclick="nextWord()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-right"></i> 다음 단어 <kbd class="ml-1 text-[10px] bg-emerald-800/60 px-1.5 py-0.5 rounded">Enter</kbd></button>
+        </div>`;
+    return card(`'${P.word}' 짜임 요약`, "fa-circle-check", "짜임 트리부터 형성 방법까지 한눈에 정리했습니다.", body);
+}
+
+/* =====================================================================
+   8. 모달 · 가이드
+   ===================================================================== */
+function showExplanationModal(text) { const m = document.getElementById('explanation-modal'); m.querySelector('h3').innerText = '다시 생각해 볼까요?'; m.querySelector('h3').nextElementSibling.innerText = '선택이 문법 규칙과 맞지 않습니다.'; document.getElementById('modal-explanation-text').innerText = text; m.classList.remove('hidden'); }
+function closeExplanationModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
+function openGuide() { document.getElementById('guide-modal').classList.remove('hidden'); }
+function closeGuide() { document.getElementById('guide-modal').classList.add('hidden'); }
+function renderGuide() {
+    const list = cat => Object.values(BANK).filter(b => b.cat === cat).map(b => `<span class="inline-block bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 mr-1 mb-1" title="${b.gloss}${b.change ? ' · ' + b.change : ''}">${b.form}</span>`).join('');
+    const counts = {}; PROBLEMS.forEach(p => counts[p.typeLabel] = (counts[p.typeLabel] || 0) + 1);
+    const examCount = PROBLEMS.filter(p => p.exam).length, nestedCount = PROBLEMS.filter(isNestedProblem).length;
+    document.getElementById('guide-body').innerHTML = `
+        <div class="bg-indigo-950/40 p-4 rounded-xl border border-indigo-800/60 space-y-2">
+            <h4 class="font-bold text-indigo-300 text-base"><i class="fa-solid fa-sitemap mr-1"></i> 단어의 형성</h4>
+            <p>• <strong>직접 구성 요소:</strong> 마지막에 결합한 두 부분. 단어는 항상 두 갈래씩 위에서 아래로 나눕니다. 콩나물밥 → [콩나물]+[밥] → 콩나물 → [콩]+[나물]. 용언의 어미는 맨 마지막에: 새파랗다 → [새-]+[파랗다] → [파랗-]+[-다], 들어가다 → [들어]+[가다] → [들-]+[-어], [가-]+[-다].</p>
+            <p>• <strong>단일어:</strong> 어근 하나 (구름, 먹다 — '-다'는 어미이므로 어근 수에 넣지 않음)</p>
+            <p>• <strong>복합어:</strong> 둘 이상의 어근·접사 결합. 마지막 결합을 보고 판단합니다.</p>
+            <ul class="pl-4 list-disc text-slate-400 space-y-1">
+                <li><strong>합성어</strong> = 어근 + 어근 (볶음밥은 [볶음]+[밥]이므로 안에 접사가 있어도 합성어)
+                    <br>- <u>통사적</u>: 명사+명사(손발), 관형사+명사(새해), 어간+연결어미+어간(들어가다), 어간+관형사형어미+명사(먹을거리·열쇠·큰아버지), 명사+어간(빛나다·낯설다), 부사+어간(그만두다)
+                    <br>- <u>비통사적</u>: 어간+명사(덮밥·꺾쇠), 어간+어간(오가다·검붉다·굶주리다) — 어미 없이 어간이 바로 붙음
+                    <br>- <u>의미 관계</u>: 대등(손발) / 종속(눈물) / 융합(바늘방석)</li>
+                <li><strong>파생어</strong> = 어근 + 접사 (해돋이는 [해돋-]+[-이], 말하기는 [말하-]+[-기]이므로 안이 합성·파생 어근이어도 파생어)
+                    <br>- <u>접두 파생어</u>: 접두사는 뜻만 더하므로 모두 <b>한정적</b> (풋사랑, 새파랗다, 헛웃음)
+                    <br>- <u>접미 파생어</u>: <b>한정적</b>(나무꾼, 사람들, 높다랗다 — 품사 유지) / <b>지배적</b>(지우개, 많이, 사람답다, 반짝이다 — 품사 바꿈)</li>
+            </ul>
+        </div>
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2">
+            <h4 class="font-bold text-purple-400 text-base"><i class="fa-solid fa-cubes mr-1"></i> 형태소</h4>
+            <p>• <strong>자립성:</strong> 자립(체언·관형사·부사) vs 의존(어간·어미·접사)</p>
+            <p>• <strong>의미:</strong> 실질(어근: 체언·어간 등) vs 형식(어미·접사·조사)</p>
+            <p>• <strong>주의:</strong> 어간은 실질 형태소이지만 혼자 못 쓰므로 <b>의존</b>! 접사는 의존이면서 형식. '큰', '기쁨', '잠'처럼 한 글자에 두 형태소(크-+-ㄴ, 기쁘-+-ㅁ, 자-+-ㅁ)가 겹치기도 합니다. 이런 덩어리는 1단계에서 '글자 안에서 나누기'로 나눕니다. 잠·꿈·춤은 자-·꾸-·추-에 '-ㅁ'이 붙은 파생어로 봅니다.</p>
+        </div>
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2">
+            <h4 class="font-bold text-amber-300 text-base"><i class="fa-solid fa-gears mr-1"></i> 단어 생성 엔진 · 형태소 뱅크</h4>
+            <p class="text-slate-400">아래 형태소를 결합 규칙에 따라 조립해 단어 ${PROBLEMS.length}개를 출제합니다 (★ 기출·교과서 단골 ${examCount}개, 여러 층 짜임 ${nestedCount}개). 2~4글자 고유어 중 교과서와 사전의 분석이 일치하는 단어만 담았고, 분석에 논란이 있는 단어(늦잠, 부슬비, 큰집, 힘들다, 뛰놀다 등)와 불규칙 활용이 든 단어(걸음, 군밤, 여닫다), 잘 쓰이지 않는 단어는 뺐습니다.</p>
+            <p class="text-slate-400">${Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(' · ')}</p>
+            <p><b>명사</b> ${list('명사')}</p>
+            <p><b>대명사</b> ${list('대명사')} <b class="ml-2">수사</b> ${list('수사')} <b class="ml-2">관형사</b> ${list('관형사')} <b class="ml-2">부사</b> ${list('부사')}</p>
+            <p><b>동사 어간</b> ${list('동사 어간')}</p>
+            <p><b>형용사 어간</b> ${list('형용사 어간')}</p>
+            <p><b>어미</b> ${list('어미')}</p>
+            <p><b>접두사</b> ${list('접두사')}</p>
+            <p><b>접미사</b> ${list('접미사')}</p>
+        </div>`;
+}
+
+/* =====================================================================
+   8-2. 시작 화면
+   ===================================================================== */
+const START_MENU = [
+    { f: 'all',            icon: 'fa-layer-group', title: '모든 단어',        desc: '단일어부터 파생어까지 전부', color: 'indigo' },
+    { f: 'exam',           icon: 'fa-star',        title: '기출·교과서 단골', desc: '시험에 자주 나오는 단어만', color: 'amber' },
+    { f: 'nested',         icon: 'fa-tree',        title: '여러 층 짜임',     desc: '안쪽에 단어가 또 있는 어려운 단어', color: 'purple' },
+    { f: '단일어',         icon: 'fa-cube',        title: '단일어',           desc: '더 나눌 수 없는 말 알아보기', color: 'slate' },
+    { f: '통사적 합성어',  icon: 'fa-link',        title: '통사적 합성어',    desc: '문장 규칙에 맞게 결합한 말', color: 'emerald' },
+    { f: '비통사적 합성어',icon: 'fa-link-slash',  title: '비통사적 합성어',  desc: '어미 없이 어간이 바로 붙은 말', color: 'rose' },
+    { f: '접두 파생어',    icon: 'fa-arrow-left',  title: '접두 파생어',      desc: '앞에 접사가 붙은 말', color: 'sky' },
+    { f: '접미 파생어',    icon: 'fa-arrow-right', title: '접미 파생어',      desc: '뒤에 접사가 붙은 말', color: 'pink' },
+];
+function renderStart() {
+    const examCount = PROBLEMS.filter(p => p.exam).length;
+    const nameBlock = userName
+        ? `<div class="text-sm text-slate-300"><b class="text-slate-100">${userName}</b>님, 반가워요 <button onclick="changeName()" class="ml-2 text-[11px] text-slate-500 hover:text-slate-300 underline">이름 바꾸기</button></div>
+           <button onclick="startWith('all')" class="w-full max-w-xs py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/40 transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3"><i class="fa-solid fa-play"></i> 시작하기</button>
+           <button onclick="startTutorial()" class="w-full max-w-xs -mt-4 py-3 ${tutorialDone ? 'bg-slate-900 border border-slate-700 text-slate-300' : 'bg-amber-500/15 border-2 border-amber-500/70 text-amber-200 glow-active'} hover:bg-amber-500/25 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fa-solid fa-graduation-cap"></i> ${tutorialDone ? '튜토리얼 다시 보기' : '튜토리얼 (콩나물밥으로 배우기)'}</button>
+           <div class="w-full max-w-xs -mt-2">${myRecordHtml()}<button onclick="openRanking()" class="mt-2 w-full py-2.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 rounded-xl text-sm font-bold text-amber-300"><i class="fa-solid fa-ranking-star mr-1"></i> 랭킹 보기</button></div>`
+        : `<div class="w-full max-w-xs bg-slate-900/90 border-2 border-indigo-500/50 rounded-2xl p-5 space-y-3">
+               <label for="name-input" class="block text-sm font-bold text-slate-200 text-center">이름을 적어 주세요</label>
+               <input id="name-input" maxlength="12" placeholder="예: 홍길동" onkeydown="if(event.key==='Enter'){event.preventDefault();submitName();}" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 text-slate-100 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" autocomplete="off">
+               <button onclick="submitName()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-base shadow-lg transition"><i class="fa-solid fa-play mr-1"></i> 시작</button>
+               <p class="text-[11px] text-slate-500 text-center">이름을 적으면 바로 튜토리얼이 시작돼요. 언제든 '나가기'로 빠져나올 수 있어요.</p>
+           </div>`;
+    document.getElementById('start-screen').innerHTML = `
+        <div class="w-full max-w-2xl mx-auto flex flex-col items-center space-y-8 py-8">
+            <div class="text-center space-y-3">
+                <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white text-4xl shadow-lg shadow-indigo-500/40 glow-active"><i class="fa-solid fa-sitemap"></i></div>
+                <h2 class="text-3xl sm:text-4xl font-black text-slate-100">단어의 짜임 연습</h2>
+                <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">단어를 직접 구성 요소로 나누고, 형태소의 종류와 성격을 밝힌 뒤,<br class="hidden sm:block">어떤 방법으로 만들어졌는지 분류합니다.</p>
+                <div class="flex items-center justify-center gap-4 text-xs pt-1">
+                    <span class="text-slate-400">단어 <b class="text-slate-200">${PROBLEMS.length}</b>개 · 기출 단골 <b class="text-amber-300">${examCount}</b>개</span>
+                </div>
+            </div>
+            ${nameBlock}
+            <div class="flex items-center gap-3 text-xs">
+                <button onclick="openGuide()" class="px-4 py-2 rounded-lg font-bold border border-slate-700 bg-slate-900 text-slate-300 hover:text-white hover:border-indigo-500/60"><i class="fa-solid fa-book-bookmark mr-1"></i> 문법 가이드</button>
+                <span class="text-slate-500">무작위로 출제됩니다. 유형은 시작 후 상단에서 바꿀 수 있어요.</span>
+            </div>
+        </div>`;
+    if (!userName) setTimeout(() => document.getElementById('name-input')?.focus(), 50);
+}
+function setStartMode(m) { document.getElementById('mode-selector').value = m; playSound('click'); renderStart(); }
+function showStart() {
+    tutorial = false; 
+    renderStart();
+    document.getElementById('start-screen').classList.remove('hidden');
+    ['phase-bar', 'app-container'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('control-bar').classList.add('hidden');
+    window.scrollTo(0, 0);
+}
+function startWith(filter) {
+    tutorial = false; playSound('correct');
+    document.getElementById('filter-selector').value = filter;
+    document.getElementById('start-screen').classList.add('hidden');
+    ['phase-bar', 'app-container', 'control-bar'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+    const pool = getPool();
+    const cand = pool;
+    const mode = document.getElementById('mode-selector').value;
+    loadWord(mode === 'random' ? cand[Math.floor(Math.random() * cand.length)] : cand[0]);
+    window.scrollTo(0, 0);
+}
+
+/* =====================================================================
+   8-3. 디자인 테마 (Tailwind 유틸리티를 테마별로 덮어씀)
+   ===================================================================== */
+const THEMES = {
+    neon:  { name: '네온 다크', desc: '어두운 배경에 남색·보라 강조', swatch: ['#0b0f19', '#1e1b4b', '#6366f1', '#f1f5f9'], dark: true },
+    paper: { name: '종이 노트', desc: '기본 테마. 밝은 종이색 배경으로 눈이 편함', swatch: ['#f4efe4', '#fbf8f1', '#4f46e5', '#1e1913'], dark: false,
+        slate: { bg: { 950: '#f4efe4', 900: '#fbf8f1', 800: '#efe8da', 700: '#e2d9c6' }, border: { 800: '#e4dccb', 700: '#d6ccb6', 600: '#c2b69c' }, text: { 100: '#1e1913', 200: '#2a241b', 300: '#463f33', 400: '#665e4f', 500: '#857c6b', 600: '#a09786', 900: '#1e1913' } },
+        vars: { '--bg': '#f4efe4', '--fg': '#1e1913', '--tbox': '#fbf8f1', '--tbox-border': '#d6ccb6', '--cur': '#e6e4ff', '--gap-bg': '#fbf8f1', '--gap-border': '#b8ad93', '--gap-text': '#5b5346', '--scroll-track': '#efe8da', '--scroll-thumb': '#c2b69c', '--slot-filled': '#c9c8f7', '--slot-ok': '#d5f2e3', '--slot-bad': '#fbd9df', '--chip-bg': '#efe8da', '--chip-text': '#1e1913' },
+        extra: { 'bg-indigo-950/40': '#eceefe', 'bg-purple-950/20': '#f3eafd', 'bg-sky-950/40': '#e6f3fc', 'bg-amber-950/50': '#fff3d6', 'bg-rose-950/60': '#fde8ec', 'bg-indigo-500/20': '#e0e3fb', 'bg-rose-500/20': '#fbdde3', 'bg-emerald-500/20': '#d8f3e6', 'bg-amber-500/15': '#fdf0d0', 'hover:bg-amber-500/25': '#fbe6b3',
+            'text-indigo-300': '#4338ca', 'text-indigo-400': '#4f46e5', 'text-indigo-200/80': '#3730a3', 'text-indigo-200': '#3730a3', 'text-purple-300': '#7e22ce', 'text-purple-400': '#7e22ce', 'text-sky-300': '#0369a1', 'text-sky-200': '#075985', 'text-amber-300': '#b45309', 'text-amber-300/80': '#b45309', 'text-amber-200': '#92400e', 'text-amber-100': '#78350f', 'text-amber-400': '#b45309', 'text-emerald-300': '#047857', 'text-emerald-400': '#059669', 'text-emerald-200': '#065f46', 'text-rose-300/80': '#be123c', 'text-rose-200': '#9f1239', 'text-rose-400': '#e11d48' } },
+    chalk: { name: '칠판', desc: '짙은 초록 칠판에 분필 글씨 느낌의 차분한 어두운 테마', swatch: ['#0f1f18', '#20423a', '#6366f1', '#f2f7ea'], dark: true,
+        slate: { bg: { 950: '#0f1f18', 900: '#173028', 800: '#20423a', 700: '#2b5449' }, border: { 800: '#2b5449', 700: '#396a5c', 600: '#4a8371' }, text: { 100: '#f2f7ea', 200: '#e4ecd9', 300: '#c9d6bd', 400: '#a4b79d', 500: '#809a7d', 600: '#657d66', 900: '#0f1f18' } },
+        vars: { '--bg': '#0f1f18', '--fg': '#f2f7ea', '--tbox': '#173028', '--tbox-border': '#396a5c', '--cur': '#243a55', '--gap-bg': '#0f1f18', '--gap-border': '#4a8371', '--gap-text': '#a4b79d', '--scroll-track': '#173028', '--scroll-thumb': '#396a5c', '--slot-filled': 'rgba(67,56,202,.55)', '--slot-ok': 'rgba(6,95,70,.55)', '--slot-bad': 'rgba(159,18,57,.45)', '--chip-bg': '#20423a', '--chip-text': '#f2f7ea' } },
+};
+const SLATE_CLASSES = ['bg-slate-950','bg-slate-950/80','bg-slate-950/70','bg-slate-950/60','bg-slate-900','bg-slate-900/95','bg-slate-900/90','bg-slate-900/80','bg-slate-900/60','bg-slate-800','bg-slate-800/90','bg-slate-700','hover:bg-slate-800','hover:bg-slate-700',
+    'border-slate-800','border-slate-800/80','border-slate-700','border-slate-700/80','border-slate-600',
+    'text-slate-100','text-slate-200','text-slate-300','text-slate-400','text-slate-500','text-slate-600','text-slate-900','hover:text-slate-200'];
+const cssEscape = c => c.replace(/[:/.]/g, m => '\\' + m);
+function themeCss(key) {
+    const t = THEMES[key];
+    if (!t.slate) return '';
+    const sel = `[data-wf-theme="${key}"]`;
+    const rules = [];
+    const prop = c => c.includes('bg-') ? 'background-color' : c.includes('border-') ? 'border-color' : 'color';
+    const selectorOf = c => c.startsWith('hover:') ? `${sel} .${cssEscape(c)}:hover` : `${sel} .${cssEscape(c)}`;
+    SLATE_CLASSES.forEach(c => {
+        const m = c.match(/(bg|border|text)-slate-(\d{3})/); const val = t.slate[m[1]][m[2]];
+        if (val) rules.push(`${selectorOf(c)}{${prop(c)}:${val}}`);
+    });
+    Object.entries(t.extra || {}).forEach(([c, val]) => rules.push(`${selectorOf(c)}{${prop(c)}:${val}}`));
+    if (!t.dark) {
+        rules.push(`${sel} .fixed.${cssEscape('bg-slate-950/80')}{background-color:rgba(40,33,22,.55)}`);
+        rules.push(`${sel} .glow-active.bg-gradient-to-br{background-image:linear-gradient(to bottom right,#e9e8ff,#fffdf8,#f1e8ff)}`);
+        rules.push(`${sel} .glow-active .text-white{color:#1e1913}`);
+        rules.push(`${sel} .bg-indigo-500.text-white, ${sel} .bg-amber-500.text-white{color:#fff}`);
+    }
+    rules.push(`${sel}{${Object.entries(t.vars).map(([k, v]) => `${k}:${v}`).join(';')}}`);
+    return rules.join('\n');
+}
+let currentTheme = 'paper';
+try { currentTheme = localStorage.getItem('wf_theme') || 'paper'; } catch (e) {}
+function applyTheme(key) {
+    if (!THEMES[key]) key = 'paper';
+    currentTheme = key;
+    document.body.setAttribute('data-wf-theme', key);
+    let st = document.getElementById('theme-style');
+    if (!st) { st = document.createElement('style'); st.id = 'theme-style'; document.head.appendChild(st); }
+    st.textContent = themeCss(key);
+    try { localStorage.setItem('wf_theme', key); } catch (e) {}
+}
+function themeCardsHtml(onPick) {
+    return Object.entries(THEMES).map(([k, t]) => `
+        <button onclick="${onPick}('${k}')" class="text-left rounded-2xl border-2 ${k === currentTheme ? 'border-indigo-500' : 'border-slate-700 hover:border-slate-500'} bg-slate-950 p-3 transition">
+            <div class="flex h-14 rounded-xl overflow-hidden border border-slate-700 mb-2">
+                <div class="flex-1" style="background:${t.swatch[0]}"><div class="m-2 h-3 rounded" style="background:${t.swatch[1]}"></div><div class="mx-2 h-2 w-2/3 rounded" style="background:${t.swatch[2]}"></div></div>
+                <div class="w-10 flex items-center justify-center text-lg font-black" style="background:${t.swatch[1]};color:${t.swatch[3]}">가</div>
+            </div>
+            <div class="font-bold text-slate-100 text-sm flex items-center gap-2">${t.name}${k === currentTheme ? '<span class="text-[10px] text-indigo-300 border border-indigo-500/50 rounded-full px-1.5">사용 중</span>' : ''}</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">${t.desc}</div>
+        </button>`).join('');
+}
+function openThemeModal() { document.getElementById('theme-cards').innerHTML = themeCardsHtml('pickThemeModal'); document.getElementById('theme-modal').classList.remove('hidden'); }
+function closeThemeModal() { document.getElementById('theme-modal').classList.add('hidden'); }
+function pickThemeModal(k) { applyTheme(k); playSound('click'); document.getElementById('theme-cards').innerHTML = themeCardsHtml('pickThemeModal'); }
+function pickThemeStart(k) { applyTheme(k); playSound('click'); renderStart(); }
+
+/* ---- 도움말 토글 ---- */
+let userName = '';
+try { userName = localStorage.getItem('wf_name') || ''; } catch (e) {}
+function saveName(n) { userName = n.trim().slice(0, 12); try { localStorage.setItem('wf_name', userName); } catch (e) {} updateScoreChip(); submitScore(); }
+function submitName() { const v = document.getElementById('name-input'); if (!v || !v.value.trim()) { v && v.focus(); return; } saveName(v.value); startTutorial(); }
+function changeName() { userName = ''; try { localStorage.removeItem('wf_name'); } catch (e) {} renderStart(); setTimeout(() => document.getElementById('name-input')?.focus(), 50); }
+let hintsOn = true;
+try { hintsOn = localStorage.getItem('wf_hints') !== '0'; } catch (e) {}
+function applyHints() {
+    document.body.classList.toggle('hide-hints', !hintsOn);
+    const b = document.getElementById('btn-hints'); if (b) b.classList.toggle('opacity-50', !hintsOn);
+}
+function toggleHints() { hintsOn = !hintsOn; try { localStorage.setItem('wf_hints', hintsOn ? '1' : '0'); } catch (e) {} applyHints(); playSound('click'); }
+
+/* ---- 정답 보기: 현재 단계의 정답을 채워 주고 연속 기록은 끊는다 ---- */
+function revealAnswer() {
+    if (!P || !document.getElementById('start-screen').classList.contains('hidden')) return;
+    if (!tutorial) wordRevealed = true;
+    let text = '';
+    if (currentPhase === 1) {
+        const n = currentCutNode();
+        if (!n) return;
+        markWrong();
+        if (isLeafAsk(n)) text = `${eunNeun(n.text)} 뜻을 가진 가장 작은 단위(형태소)라 더 나눌 수 없습니다.`;
+        else if (isFusedAsk(n)) text = `${n.fusedNote}\n\n정답: 글자 안에서 나누기 → ${n.inner.correct}`;
+        else text = WordEngine.explainCut(P, n);
+        innerNode = null;
+        cutDone.add(n); pendingCut = null; advanceIfDone();
+    } else if (currentPhase === 2) {
+        markWrong();
+        P.morphemes.forEach((m, i) => { p2.assigned[i] = m.cat; p2.ok.add(i); p2.bad.delete(i); });
+        text = P.morphemes.map(m => `• '${m.form}' → ${m.cat}`).join('\n') + '\n\n검증 버튼을 누르면 다음 단계로 갑니다.';
+        renderApp();
+    } else if (currentPhase === 3) {
+        markWrong();
+        P.morphemes.forEach((m, i) => { p3.auto[i] = m.auto; p3.mean[i] = m.mean; p3.okAuto.add(i); p3.okMean.add(i); p3.badAuto.delete(i); p3.badMean.delete(i); });
+        text = P.morphemes.map(m => `• '${m.form}' → ${m.auto} · ${m.mean}`).join('\n') + '\n\n검증 버튼을 누르면 다음 단계로 갑니다.';
+        renderApp();
+    } else if (currentPhase === 4) {
+        markWrong();
+        if (treePath.length < P.treeAnswers.length) {
+            const ans = P.treeAnswers[treePath.length];
+            const others = treeSteps(treePath)[treePath.length].options.filter(o => o !== ans);
+            text = `정답: ${ans}\n\n` + others.map(o => `'${o}'이(가) 아닌 이유: ${WordEngine.explain(P, o)}`).join('\n\n');
+            treePath.push(ans);
+            if (treePath.length === P.treeAnswers.length && !P.nested.length) setTimeout(finishWord, 350);
+        } else {
+            const i = nestedPaths.findIndex((pp, j) => pp.length < P.nested[j].treeAnswers.length);
+            if (i === -1) return;
+            const sub = P.nested[i], path = nestedPaths[i], ans = sub.treeAnswers[path.length];
+            const others = treeSteps(path)[path.length].options.filter(o => o !== ans);
+            text = `안쪽 단어 '${sub.word}' 정답: ${ans}\n\n` + others.map(o => `'${o}'이(가) 아닌 이유: ${WordEngine.explain(sub, o)}`).join('\n\n');
+            path.push(ans);
+            if (nestedPaths.every((pp, j) => pp.length === P.nested[j].treeAnswers.length)) setTimeout(finishWord, 350);
+        }
+        renderApp();
+    } else return;
+    showAnswerModal(text);
+}
+function showAnswerModal(text) {
+    const m = document.getElementById('explanation-modal');
+    m.querySelector('h3').innerText = '정답 보기';
+    m.querySelector('h3').nextElementSibling.innerText = '현재 단계의 정답을 채웠습니다.';
+    document.getElementById('modal-explanation-text').innerText = text;
+    m.classList.remove('hidden');
+}
+
+/* ---- 랭킹: 기록 제출·조회 ---- */
+function myRecordHtml() {
+    const acc = stats.words ? Math.round(100 * (1 - stats.wrong / Math.max(1, stats.wrong + stats.words * 4))) : 0;
+    return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 grid grid-cols-4 gap-2 text-center">
+        <div><div class="text-[10px] text-slate-500">총점</div><div class="font-black text-indigo-300 text-lg">${stats.score}</div></div>
+        <div><div class="text-[10px] text-slate-500">푼 단어</div><div class="font-bold text-slate-100">${stats.words}</div></div>
+        <div><div class="text-[10px] text-slate-500">오답</div><div class="font-bold text-slate-100">${stats.wrong}</div></div>
+        <div><div class="text-[10px] text-slate-500">최고 연속</div><div class="font-bold text-slate-100">${stats.best}</div></div>
+    </div>`;
+}
+function submitScore() {
+    if (!RANK_API || !userName) return;
+    const payload = { pid, name: userName, score: stats.score, words: stats.words, wrong: stats.wrong, best: stats.best };
+    try { fetch(RANK_API, { method: 'POST', body: JSON.stringify(payload) }).catch(() => {}); } catch (e) {}
+}
+async function openRanking() {
+    const body = document.getElementById('rank-body');
+    document.getElementById('rank-modal').classList.remove('hidden');
+    body.innerHTML = `<div class="text-[11px] text-slate-400">내 기록 ${userName ? `· <b class="text-slate-200">${userName}</b>` : ''}</div>${myRecordHtml()}<div class="text-center text-slate-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> 불러오는 중…</div>`;
+    if (!RANK_API) { body.querySelector('.py-4').innerHTML = '이 배포판에는 공유 랭킹 서버가 연결되어 있지 않습니다. 내 기록만 이 기기에 저장됩니다.'; return; }
+    try {
+        const res = await fetch(RANK_API + '?limit=100&t=' + Date.now());
+        const data = await res.json();
+        const rows = (data.rows || []).slice().sort((a, b) => b.score - a.score);
+        const myIdx = rows.findIndex(r => r.pid === pid);
+        let html = `<div class="text-[11px] text-slate-400 flex items-center justify-between"><span>전체 ${rows.length}명${myIdx >= 0 ? ` · 내 순위 <b class="text-amber-300">${myIdx + 1}위</b>` : ''}</span><span>${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준</span></div>
+            <table class="w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-slate-500"><th class="text-left px-2">순위</th><th class="text-left px-2">이름</th><th class="px-2">총점</th><th class="px-2">단어</th><th class="px-2">연속</th></tr></thead><tbody>`;
+        rows.slice(0, 100).forEach((r, i) => {
+            const me = r.pid === pid;
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+            html += `<tr class="${me ? 'bg-amber-500/15' : 'bg-slate-950'}"><td class="px-2 py-1.5 font-bold">${medal}</td><td class="px-2 py-1.5 font-bold ${me ? 'text-amber-300' : 'text-slate-100'}">${String(r.name || '').replace(/[<>&]/g, '')}${me ? ' (나)' : ''}</td><td class="px-2 text-center font-black text-indigo-300">${r.score}</td><td class="px-2 text-center">${r.words}</td><td class="px-2 text-center">${r.best}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        if (!rows.length) html += `<div class="text-center text-slate-500 py-3">아직 기록이 없습니다. 첫 단어를 풀면 올라갑니다.</div>`;
+        body.querySelector('.py-4').outerHTML = html;
+    } catch (e) {
+        body.querySelector('.py-4').innerHTML = '랭킹 서버에 연결하지 못했습니다. 잠시 후 다시 열어 보세요.';
+    }
+}
+function closeRanking() { document.getElementById('rank-modal').classList.add('hidden'); }
+
+/* ---- 키보드: Enter = 확인/다음, Esc = 닫기 ---- */
+document.addEventListener('keydown', e => {
+    if (e.target && ['SELECT', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    const modalOpen = ['explanation-modal', 'guide-modal', 'theme-modal', 'rank-modal'].some(id => !document.getElementById(id).classList.contains('hidden'));
+    if (e.key === 'Escape') { closeExplanationModal(); closeGuide(); closeThemeModal(); closeRanking(); return; }
+    if (e.key !== 'Enter') return;
+    if (modalOpen) { closeExplanationModal(); closeGuide(); closeThemeModal(); closeRanking(); return; }
+    if (!document.getElementById('start-screen').classList.contains('hidden')) { if (userName) startWith('all'); else document.getElementById('name-input')?.focus(); return; }
+    if (currentPhase === 1) { if (pendingCut) confirmCut(); }
+    else if (currentPhase === 2) validatePhase2();
+    else if (currentPhase === 3) validatePhase3();
+    else if (currentPhase === 5) nextWord();
+});
+
+/* =====================================================================
+   9. 시작
+   ===================================================================== */
+window.onload = function () {
+    const errors = WordEngine.selfCheck();
+    if (errors.length) { console.error('레시피 오류', errors); const w = document.getElementById('engine-warning'); w.classList.remove('hidden'); w.innerHTML = `<b>엔진 자체 검증 실패 (${errors.length}건)</b><br>${errors.join('<br>')}`; }
+    document.getElementById('total-words-count').innerText = PROBLEMS.length;
+    applyTheme(currentTheme); applyHints(); updateScoreChip();
+    renderGuide();
+    loadWord(0);
+    showStart();
+};
+</script>
+</body>
+</html>
