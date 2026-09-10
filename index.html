@@ -165,6 +165,15 @@
         </div>
     </div>
 
+    <div id="tut-done-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500/60 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="text-4xl">🎉</div>
+            <h3 class="font-black text-xl text-slate-100">튜토리얼 완료!</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">짜임 나누기 → 형태소 종류 → 형태소 성격 → 형성 방법, 이 순서로 모든 단어를 분석합니다.<br>이제 실전 문제를 풀어 보세요. 막히면 상단 '정답' 버튼, 규칙이 헷갈리면 '문법 가이드'를 보면 됩니다.</p>
+            <button onclick="exitTutorial(true)" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl font-black text-base shadow-lg transition"><i class="fa-solid fa-play mr-1"></i> 실전 시작</button>
+        </div>
+    </div>
+
     <div id="rank-modal" onclick="if(event.target===this)closeRanking()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -1291,7 +1300,8 @@ let wordWrong = 0, wordRevealed = false, lastPoints = null;
 let stats = { score: 0, words: 0, wrong: 0, best: 0, streak: 0 };
 try { Object.assign(stats, JSON.parse(localStorage.getItem('wf_stats') || '{}')); } catch (e) {}
 let pid = '';
-try { pid = localStorage.getItem('wf_pid') || ''; if (!pid) { pid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem('wf_pid', pid); } } catch (e) { pid = 'anon'; }
+const newPid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+try { pid = localStorage.getItem('wf_pid') || ''; if (!pid || pid === 'anon') { pid = newPid(); localStorage.setItem('wf_pid', pid); } } catch (e) { pid = newPid(); }
 function saveStats() { try { localStorage.setItem('wf_stats', JSON.stringify(stats)); } catch (e) {} updateScoreChip(); }
 function updateScoreChip() { const el = document.getElementById('score-chip'); if (el) el.innerText = `${userName ? userName + ' · ' : ''}${stats.score}점`; }
 const TUTORIAL_WORD = '콩나물밥';
@@ -1713,14 +1723,19 @@ function startTutorial() {
     window.scrollTo(0, 0);
 }
 function exitTutorial(goPlay) {
-    tutorial = false; 
+    tutorial = false; document.getElementById('tut-done-modal').classList.add('hidden'); 
     if (goPlay) startWith('all'); else showStart();
 }
 
 /* ---- 완료 ---- */
 function finishWord() {
     currentPhase = 5;
-    if (tutorial) { tutorialDone = true; try { localStorage.setItem('wf_tutorial', '1'); } catch (e) {} }
+    if (tutorial) {
+        tutorialDone = true; try { localStorage.setItem('wf_tutorial', '1'); } catch (e) {}
+        renderPhaseBar(); renderApp(); playSound('complete');
+        setTimeout(() => document.getElementById('tut-done-modal').classList.remove('hidden'), 600);
+        return;
+    }
     else {
         let pts = wordRevealed ? 0 : Math.max(3, 10 - 2 * wordWrong);
         if (isNestedProblem(P)) pts = Math.round(pts * 1.5);
@@ -1827,7 +1842,7 @@ function renderStart() {
                <label for="name-input" class="block text-sm font-bold text-slate-200 text-center">이름을 적어 주세요</label>
                <input id="name-input" maxlength="12" placeholder="예: 홍길동" onkeydown="if(event.key==='Enter'){event.preventDefault();submitName();}" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 text-slate-100 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" autocomplete="off">
                <button onclick="submitName()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-base shadow-lg transition"><i class="fa-solid fa-play mr-1"></i> 시작</button>
-               <p class="text-[11px] text-slate-500 text-center">이름을 적으면 바로 튜토리얼이 시작돼요. 언제든 '나가기'로 빠져나올 수 있어요.</p>
+               <p id="name-msg" class="text-[11px] text-slate-500 text-center">이름을 적으면 바로 튜토리얼이 시작돼요. 랭킹에 쓰이니 다른 사람과 겹치지 않는 이름으로!</p>
            </div>`;
     document.getElementById('start-screen').innerHTML = `
         <div class="w-full max-w-2xl mx-auto flex flex-col items-center space-y-8 py-8">
@@ -1938,7 +1953,26 @@ function pickThemeStart(k) { applyTheme(k); playSound('click'); renderStart(); }
 let userName = '';
 try { userName = localStorage.getItem('wf_name') || ''; } catch (e) {}
 function saveName(n) { userName = n.trim().slice(0, 12); try { localStorage.setItem('wf_name', userName); } catch (e) {} updateScoreChip(); submitScore(); }
-function submitName() { const v = document.getElementById('name-input'); if (!v || !v.value.trim()) { v && v.focus(); return; } saveName(v.value); startTutorial(); }
+const normName = n => String(n || '').replace(/\s+/g, '').toLowerCase();
+async function nameTaken(name) {
+    if (!RANK_API) return false;
+    try {
+        const res = await fetch(RANK_API + '?limit=500&t=' + Date.now());
+        const data = await res.json();
+        return (data.rows || []).some(r => normName(r.name) === normName(name) && r.pid !== pid);
+    } catch (e) { return false; }   // 서버에 못 닿으면 일단 통과
+}
+async function submitName() {
+    const v = document.getElementById('name-input'), msg = document.getElementById('name-msg');
+    if (!v || !v.value.trim()) { v && v.focus(); return; }
+    const name = v.value.trim().slice(0, 12);
+    if (msg) { msg.textContent = '이름 확인 중…'; msg.className = 'text-[11px] text-slate-400 text-center'; }
+    if (await nameTaken(name)) {
+        if (msg) { msg.textContent = `'${name}'은(는) 이미 다른 사람이 쓰고 있어요. 뒤에 숫자나 반 이름을 붙여 보세요. (예: ${name}2)`; msg.className = 'text-[11px] text-rose-400 text-center font-bold'; }
+        v.focus(); v.select(); playSound('wrong'); return;
+    }
+    saveName(name); startTutorial();
+}
 function changeName() { userName = ''; try { localStorage.removeItem('wf_name'); } catch (e) {} renderStart(); setTimeout(() => document.getElementById('name-input')?.focus(), 50); }
 let hintsOn = true;
 try { hintsOn = localStorage.getItem('wf_hints') !== '0'; } catch (e) {}
@@ -2014,7 +2048,11 @@ function myRecordHtml() {
 function submitScore() {
     if (!RANK_API || !userName) return;
     const payload = { pid, name: userName, score: stats.score, words: stats.words, wrong: stats.wrong, best: stats.best };
-    try { fetch(RANK_API, { method: 'POST', body: JSON.stringify(payload) }).catch(() => {}); } catch (e) {}
+    try {
+        fetch(RANK_API, { method: 'POST', body: JSON.stringify(payload) }).then(r => r.json()).then(d => {
+            if (d && d.error === 'name_taken') showExplanationModal(`'${userName}'은(는) 이미 다른 사람이 쓰는 이름이라 랭킹에 올라가지 않았어요. 시작 화면의 '이름 바꾸기'로 다른 이름을 적어 주세요.`);
+        }).catch(() => {});
+    } catch (e) {}
 }
 async function openRanking() {
     const body = document.getElementById('rank-body');
@@ -2024,7 +2062,7 @@ async function openRanking() {
     try {
         const res = await fetch(RANK_API + '?limit=100&t=' + Date.now());
         const data = await res.json();
-        const rows = (data.rows || []).slice().sort((a, b) => b.score - a.score);
+        const rows = (data.rows || []).filter(r => r.words > 0 || r.pid === pid).sort((a, b) => b.score - a.score || a.words - b.words);
         const myIdx = rows.findIndex(r => r.pid === pid);
         let html = `<div class="text-[11px] text-slate-400 flex items-center justify-between"><span>전체 ${rows.length}명${myIdx >= 0 ? ` · 내 순위 <b class="text-amber-300">${myIdx + 1}위</b>` : ''}</span><span>${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준</span></div>
             <table class="w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-slate-500"><th class="text-left px-2">순위</th><th class="text-left px-2">이름</th><th class="px-2">총점</th><th class="px-2">단어</th><th class="px-2">연속</th></tr></thead><tbody>`;
@@ -2045,6 +2083,7 @@ function closeRanking() { document.getElementById('rank-modal').classList.add('h
 /* ---- 키보드: Enter = 확인/다음, Esc = 닫기 ---- */
 document.addEventListener('keydown', e => {
     if (e.target && ['SELECT', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (!document.getElementById('tut-done-modal').classList.contains('hidden')) { if (e.key === 'Enter' || e.key === 'Escape') exitTutorial(true); return; }
     const modalOpen = ['explanation-modal', 'guide-modal', 'theme-modal', 'rank-modal'].some(id => !document.getElementById(id).classList.contains('hidden'));
     if (e.key === 'Escape') { closeExplanationModal(); closeGuide(); closeThemeModal(); closeRanking(); return; }
     if (e.key !== 'Enter') return;
