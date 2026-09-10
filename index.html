@@ -2499,7 +2499,7 @@ function sRender6() {
     let body = `<div class="w-full flex flex-wrap justify-center gap-2">${cw.map(({ w, i }) => `<button ${s6.ok ? 'disabled' : ''} onclick="s6Toggle(${i})" class="pick ${s6.ok ? (w.comp ? 'ok' : '') : s6.picked.has(i) ? 'on' : ''} px-4 py-2.5 rounded-xl text-sm font-black border border-slate-600 bg-slate-800 text-slate-200">${w.text}</button>`).join('')}</div>`;
     if (s6.ok) {
         const remaining = s6.queue.length;
-        body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-xs text-emerald-200 text-center">복합어 ${cw.filter(x => x.w.comp).length}개${s6.done.length ? ` · 분석 완료: ${s6.done.join(', ')}` : ''}</div>` + (remaining ? primaryBtn('s6StartTree()', `'${S.words[s6.queue[0].wi].text}' 형성 방법 분류하기`) : primaryBtn('sFinish()', '문장 분석 완료'));
+        body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-xs text-emerald-200 text-center">복합어 ${cw.filter(x => x.w.comp).length}개${s6.done.length ? ` · 분석 완료: ${s6.done.join(', ')}` : ''}</div>` + (remaining ? primaryBtn('s6StartTree()', s6.queue[0].outer ? `안쪽 단어 '${s6.queue[0].sub.word}' 형성 방법 분류하기` : `'${S.words[s6.queue[0].wi].text}' 형성 방법 분류하기`) : primaryBtn('sFinish()', '문장 분석 완료'));
     } else body += primaryBtn('s6Validate()', '복합어 선택 검증') + `<p class="hint text-[11px] text-slate-500 text-center">어근이 둘 이상이거나 접사가 붙은 단어(합성어·파생어)를 모두 고르세요. 어간에 어미만 붙은 말(먹었다, 이른)은 단일어이지만, 피동·사동 접미사(-이-·-히-·-리-·-기-)가 붙은 말(물렸다, 울렸다)은 파생어입니다. 조사는 뺐습니다.</p>`;
     return card("6단계: 단어 형성", "fa-sitemap", "이 문장의 단어 중 복합어(합성어·파생어)를 모두 고르세요.", body);
 }
@@ -2513,10 +2513,10 @@ function s6Validate() {
     const extra = [...s6.picked].filter(i => !exp.has(i)).map(i => { const w = S.words[i]; return `${eunNeun(w.text)} 단일어입니다 — 어근 '${w.morphs.filter(m => SCAT[m.cat].kind === '어근').map(m => m.form).join(', ') || w.morphs[0].form}' 하나에 ${w.morphs.length > 1 ? '어미만 붙은 것' : '해당'}`; });
     showExplanationModal([...missed, ...extra].join('\n\n'));
 }
-window.s6StartTree = () => { const q = s6.queue.shift(); s6.cur = { ...q, sub: WordEngine.byWord(q.recipe), path: [] }; sRenderApp(); };
+window.s6StartTree = () => { const q = s6.queue.shift(); s6.cur = { ...q, sub: q.sub || WordEngine.byWord(q.recipe), path: [] }; sRenderApp(); };
 function sRender6Tree() {
     const c = s6.cur, sub = c.sub, steps = treeSteps(c.path);
-    let tree = `<div class="text-center text-sm text-slate-300 mb-2">'${S.words[c.wi].text}' ← 기본형 <b class="text-amber-300">${sub.word}</b> = ${sub.morphemes.map(m => m.form).join(' + ')}</div><div class="w-full flex flex-col items-center space-y-1">`;
+    let tree = `<div class="text-center text-sm text-slate-300 mb-2">${c.outer ? `'${c.outer}'의 안쪽 단어 <b class="text-purple-300">${sub.word}</b>` : `'${S.words[c.wi].text}' ← 기본형 <b class="text-amber-300">${sub.word}</b>`} = ${sub.morphemes.map(m => m.form).join(' + ')}</div><div class="w-full flex flex-col items-center space-y-1">`;
     steps.forEach((st, lv) => {
         const confirmed = lv < c.path.length, current = lv === c.path.length;
         if (!confirmed && !current) return;
@@ -2532,7 +2532,12 @@ window.s6Pick = (lv, k) => {
     const c = s6.cur, sub = c.sub, choice = treeSteps(c.path)[lv].options[k];
     if (choice === sub.treeAnswers[lv]) {
         playSound('correct'); c.path.push(choice);
-        if (c.path.length === sub.treeAnswers.length) { s6.done.push(`${sub.word}(${sub.treeAnswers[sub.treeAnswers.length - 1]})`); s6.cur = null; }
+        if (c.path.length === sub.treeAnswers.length) {
+            s6.done.push(`${sub.word}(${sub.treeAnswers[sub.treeAnswers.length - 1]})`);
+            // 눈싸움 → 싸움처럼 안쪽에 단어가 또 있으면 그 단어의 트리도 이어서 묻는다
+            (sub.nested || []).forEach((ns, k) => s6.queue.splice(k, 0, { wi: c.wi, recipe: ns.word, sub: ns, outer: sub.word }));
+            s6.cur = null;
+        }
         sRenderApp();
     } else { sMarkWrong(); showExplanationModal(WordEngine.explain(sub, choice)); }
 };
