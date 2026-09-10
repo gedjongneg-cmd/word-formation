@@ -2571,7 +2571,7 @@ function sRenderResult() {
 function sReveal() {
     sRevealed = true; sMarkWrong(); sWrong--;   // 소리만, 오답 수는 안 늘림
     let text = '';
-    if (sPhase === 1) { S.eojeols.forEach((e, ei) => { s1.cuts[ei] = expectedCuts(e.words); s1.bad.delete(ei); }); text = S.eojeols.map(e => `'${e.text}' → ${e.words.map(w => w.text).join(' + ')}`).join('\n'); }
+    if (sPhase === 1) { S.eojeols.forEach((e, ei) => { s1.cuts[ei] = expectedCuts(e.words); s1.bad.delete(ei); }); text = S.eojeols.map(e => `'${e.text}' → ${e.words.map(w => w.text).join(' + ')}`).join('\n') + '\n\n검증 버튼을 누르세요.'; }
     else if (sPhase === 2) { if (s2.cur) { text = `'${s2.cur.chunk.text}' = ${s2.cur.correct}`; s2Advance(); } else { S.words.forEach((w, wi) => { s2.cuts[wi] = expectedCuts(w.chunks); let st = 0; s2.fused[wi] = new Set(); w.chunks.forEach(c => { if (c.morphs.length > 1) s2.fused[wi].add(st); st += c.text.length; }); s2.bad.delete(wi); }); text = S.words.map(w => `'${w.text}' → ${w.chunks.map(c => c.text).join(' | ')}`).join('\n') + '\n\n검증 버튼을 누르세요.'; } }
     else if (sPhase === 3) { S.morphs.forEach((m, i) => { s3.assigned[i] = m.cat; s3.ok.add(i); s3.bad.delete(i); }); text = S.morphs.map(m => `'${m.form}' → ${m.cat}`).join('\n') + '\n\n검증 버튼을 누르세요.'; }
     else if (sPhase === 4) { S.morphs.forEach((m, i) => { s4.auto[i] = m.auto; s4.mean[i] = m.mean; s4.okA.add(i); s4.okM.add(i); }); text = `자립 ${S.counts.auto} · 의존 ${S.counts.dep} / 실질 ${S.counts.real} · 형식 ${S.counts.form}\n\n검증 버튼을 누르세요.`; }
