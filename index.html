@@ -1493,6 +1493,7 @@ function renderPhase1() {
         const io = innerNode.inner;
         innerPanel = `<div class="w-full bg-sky-950/40 border-2 border-sky-500/60 rounded-2xl p-4 space-y-3">
             <div class="text-sm font-bold text-sky-200 text-center">'${io.text}'을(를) 글자 안에서 어떻게 나눌까요?</div>
+            ${innerHint ? `<div class="text-xs text-amber-200 bg-amber-950/40 border border-amber-500/40 rounded-lg p-2 text-center">${innerHint}</div>` : ''}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${io.options.map((o, k) => `<button onclick="pickInner(${k})" class="py-3 px-3 bg-slate-800 hover:bg-sky-700 text-slate-100 hover:text-white rounded-xl font-black text-base border border-slate-600 hover:border-sky-400 transition tracking-wider">${o}</button>`).join('')}</div>
             <button onclick="innerNode = null; renderApp();" class="w-full py-2 text-xs text-slate-400 hover:text-slate-200">취소</button>
         </div>`;
@@ -1520,7 +1521,7 @@ function confirmNoCut() {
     else showExplanationModal(`${eunNeun(n.text)} 더 나눌 수 있습니다.\n\n` + WordEngine.explainCut(P, n));
 }
 function confirmInner() {
-    pendingCut = null;
+    pendingCut = null; innerHint = '';
     const n = currentCutNode();
     if (!n) return;
     if (isFusedAsk(n)) { innerNode = n; playSound('click'); renderApp(); return; }
@@ -1528,7 +1529,9 @@ function confirmInner() {
     if (isLeafAsk(n)) showExplanationModal(`${eunNeun(n.text)} 뜻을 가진 가장 작은 단위(형태소) 하나입니다. 글자 안에 다른 형태소가 숨어 있지 않으니 '더 나눌 수 없음'을 누르세요.`);
     else showExplanationModal(`${eunNeun(n.text)} 글자 사이에서 나눌 수 있습니다.\n\n` + WordEngine.explainCut(P, n));
 }
+let innerHint = '';
 function pickInner(k) {
+    innerHint = '';
     const n = innerNode;
     if (!n || !n.inner) return;
     const choice = n.inner.options[k];
@@ -1546,7 +1549,11 @@ function cutAt(charPos) {
         showExplanationModal(`${eunNeun(n.text)} 뜻을 가진 가장 작은 단위(형태소)입니다.\n\n${waGwa(a)} '${b}'${hasBatchim(b) ? '으로' : '로'} 나누면 어느 쪽도 홀로 뜻을 갖지 못하므로 더 나눌 수 없습니다. '더 나눌 수 없음'을 누르세요.` + (STEM_NOTES[n.morph.key] ? `\n\n※ ${STEM_NOTES[n.morph.key]}` : ''));
         return;
     }
-    if (isFusedAsk(n)) { markWrong(); renderApp(); showExplanationModal(`${eunNeun(n.text)} 글자 사이에서는 자를 수 없습니다.\n\n${n.fusedNote}\n\n'글자 안에서 나누기'를 누르세요.`); return; }
+    if (isFusedAsk(n)) {
+        // '싸움'처럼 접미사가 마지막 글자 안에 붙은 덩어리: 글자 사이 가위는 오답으로 막지 않고 바로 '글자 안에서 나누기'로 넘긴다
+        innerNode = n; innerHint = `글자 사이가 아니라 글자 안에서 나뉩니다. ${n.fusedNote} 아래에서 맞는 나누기를 고르세요.`;
+        playSound('click'); renderApp(); return;
+    }
     if (charPos === n.cutChar) { playSound('correct'); cutDone.add(n); advanceIfDone(); }
     else { markWrong(); renderApp(); showExplanationModal(WordEngine.explainCut(P, n)); }
 }
@@ -2367,7 +2374,7 @@ function sRender2() {
         const toggles = s2.ok.has(wi) ? '' : `<div class="flex justify-center gap-1 flex-wrap">${ranges.map(([a, b]) => `<button onclick="s2Fuse(${wi},${a})" class="text-[10px] px-2 py-0.5 rounded-full border ${s2.fused[wi].has(a) ? 'bg-sky-600 border-sky-400 text-white' : 'border-slate-600 text-slate-400'}" title="이 덩어리 글자 안에 형태소가 둘 겹쳐 있음">${w.text.slice(a, b)} 겹침</button>`).join('')}</div>`;
         body += `<div class="bg-slate-950 border-2 ${state} rounded-xl p-3 flex flex-col items-center gap-2"><div class="text-[10px] text-slate-500">단어 ${wi + 1}</div><div class="flex items-center gap-0.5">${sChips(w.text, s2.cuts[wi], `s2Gap.bind(null,${wi})`)}</div>${toggles}${s2.ok.has(wi) ? `<div class="text-[11px] text-emerald-300 font-bold">${w.morphs.map(m => m.form).join(' + ')}</div>` : ''}</div>`;
     });
-    body += `</div>` + primaryBtn('s2Validate()', '형태소 나누기 검증') + `<p class="hint text-[11px] text-slate-500 text-center">가위로 글자 사이를 자르고, '렸'(-리-+-었-)이나 '큰'(크-+-ㄴ)처럼 한 글자 안에 형태소가 둘 겹쳐 있으면 그 덩어리의 '겹침'을 켜세요. 어간·선어말 어미·어말 어미·접사를 모두 따로 떼야 합니다.</p>`;
+    body += `</div>` + primaryBtn('s2Validate()', '형태소 나누기 검증') + `<p class="hint text-[11px] text-slate-500 text-center">가위로 글자 사이를 자르고, '렸'(-리-+-었-)이나 '큰'(크-+-ㄴ)처럼 한 글자 안에 형태소가 둘 겹쳐 있으면 그 덩어리의 '겹침'을 켜세요. '싸움'(싸우-+-ㅁ)처럼 두 글자 덩어리 안에 겹쳐 있으면 '싸움 겹침'을 켜거나, '싸|움'으로 자르고 '움 겹침'을 켜도 됩니다. 어간·선어말 어미·어말 어미·접사를 모두 따로 떼야 합니다.</p>`;
     return card("2단계: 단어를 형태소로", "fa-cubes", "각 단어를 뜻을 가진 가장 작은 단위로 나누세요. 조사 한 글자짜리는 그대로 두면 됩니다.", body, 'max-w-3xl');
 }
 window.s2Gap = (wi, pos) => { if (s2.ok.has(wi)) return; const c = s2.cuts[wi]; c.has(pos) ? c.delete(pos) : c.add(pos); s2.fused[wi] = new Set([...s2.fused[wi]].filter(a => a === 0 || c.has(a))); s2.bad.delete(wi); playSound('click'); sRenderApp(); };
@@ -2378,6 +2385,12 @@ function s2Validate() {
         if (s2.ok.has(wi)) return;
         const exp = expectedCuts(w.chunks);
         let start = 0; const expFused = new Set(); w.chunks.forEach(c => { if (c.morphs.length > 1) expFused.add(start); start += c.text.length; });
+        if (!(sameSet(s2.cuts[wi], exp) && sameSet(s2.fused[wi], expFused))) {
+            // '싸움'(싸우-+-ㅁ)을 '싸|움'으로 자르고 '움 겹침'을 켠 경우처럼, 겹침 덩어리 안에서 자른 뒤 조각에 겹침을 켰으면 덩어리 전체 겹침으로 정규화
+            const c = new Set(s2.cuts[wi]), fz = new Set(s2.fused[wi]); let st = 0;
+            w.chunks.forEach(ch => { const end = st + ch.text.length; if (ch.morphs.length > 1 && ch.text.length >= 2) { const inner = [...c].filter(p => p > st && p < end); if (inner.length && (fz.has(st) || inner.some(p => fz.has(p)))) { inner.forEach(p => { c.delete(p); fz.delete(p); }); fz.add(st); } } st = end; });
+            if (sameSet(c, exp) && sameSet(fz, expFused)) { s2.cuts[wi] = c; s2.fused[wi] = fz; }
+        }
         if (sameSet(s2.cuts[wi], exp) && sameSet(s2.fused[wi], expFused)) { s2.ok.add(wi); w.chunks.forEach(c => { if (c.morphs.length > 1) s2.queue.push({ wi, chunk: c }); }); }
         else { s2.bad.add(wi); wrong.push(wi); }
     });
@@ -2618,7 +2631,7 @@ function sTutorialTip() {
     let step = '', text = '';
     if (sPhase === 1) { step = '1단계 어절 → 단어'; text = `띄어쓰기 단위인 어절은 4개예요. <b>조사는 앞말에 붙어 있어도 하나의 단어</b>이니 떼어 냅니다. '누나가' → 누나 + <b>가</b>, '눈싸움에서' → 눈싸움 + <b>에서</b>, '아이를' → 아이 + <b>를</b>. '울렸다'는 용언이라 어미까지 한 단어이니 자르지 않아요. 세 군데 가위를 켜고 검증을 누르세요.`; }
     else if (sPhase === 2 && s2.cur) { step = '2단계 겹친 글자'; text = `한 글자 안에 형태소가 둘 들어 있어요. '싸움'은 <b>'싸우 + ㅁ'</b>(어간 + 명사 만드는 접미사), '렸'은 <b>'리 + 었'</b>(사동 접미사 + 과거)로 줄어든 것입니다. 맞는 나누기를 고르세요.`; }
-    else if (sPhase === 2) { step = '2단계 단어 → 형태소'; text = `'누나', '가', '에서', '아이', '를'은 형태소 하나라 그대로 둡니다. <b>눈싸움</b>은 눈 + 싸우- + -ㅁ이니 <b>눈|싸움</b>으로 자르고, '싸움' 덩어리는 두 형태소가 한 글자에 겹쳐 있으니 아래 <b>'싸움 겹침'</b>을 켜세요. <b>울렸다</b>는 울- + -리- + -었- + -다이니 <b>울|렸|다</b>로 자르고 <b>'렸 겹침'</b>을 켠 뒤 검증하세요.`; }
+    else if (sPhase === 2) { step = '2단계 단어 → 형태소'; text = `'누나', '가', '에서', '아이', '를'은 형태소 하나라 그대로 둡니다. <b>눈싸움</b>은 눈 + 싸우- + -ㅁ이니 <b>눈|싸움</b>으로 자르고, '싸움'은 싸우-와 -ㅁ이 '움' 글자 안에서 겹쳐 있으니 아래 <b>'싸움 겹침'</b>을 켜세요(싸|움으로 자르고 '움 겹침'을 켜도 됩니다). <b>울렸다</b>는 울- + -리- + -었- + -다이니 <b>울|렸|다</b>로 자르고 <b>'렸 겹침'</b>을 켠 뒤 검증하세요.`; }
     else if (sPhase === 3) { step = '3단계 형태소 종류'; text = `누나·눈·아이 → <b>명사</b>, 가·에서·를 → <b>조사</b>, 싸우-·울- → <b>동사 어간</b>, -ㅁ → <b>접미사</b>(동사를 명사로 만듦), -리- → <b>사동 접미사</b>(울게 시킴), -었- → <b>선어말 어미</b>(과거), -다 → <b>어말 어미</b>. 슬롯 순서대로 블록을 누르고 검증하세요.`; }
     else if (sPhase === 4) { step = '4단계 형태소 성격'; text = `명사(누나, 눈, 아이)는 <b>자립·실질</b>, 어간(싸우-, 울-)은 <b>의존·실질</b>, 조사·접미사·어미(가, -ㅁ, 에서, 를, -리-, -었-, -다)는 모두 <b>의존·형식</b>이에요. 검증하면 개수를 세어 줍니다. 시험의 "자립 형태소는 몇 개?"가 바로 이 문제예요.`; }
     else if (sPhase === 5) { step = '5단계 시제·사동'; text = `'-었-'이 있으니 시제는 <b>과거</b>. 서술어 '울렸다'는 누나가 아이를 울게 <b>시킨(만든)</b> 것이므로 <b>사동</b>이에요. ('아이가 개에게 물렸다'의 '-리-'는 물림을 <b>당한</b> 피동이라는 점과 비교해 보세요.)`; }
