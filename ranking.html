@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>단어의 짜임 랭킹</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f4efe4; --card:#fbf8f1; --line:#d6ccb6; --ink:#1e1913; --muted:#857c6b; --accent:#4f46e5; --gold:#b45309; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Noto Sans KR', sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:640px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:.85rem; margin:0 0 18px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:8px 12px; }
+  table { width:100%; border-collapse:separate; border-spacing:0 6px; font-size:.95rem; }
+  th { text-align:left; color:var(--muted); font-weight:700; font-size:.75rem; padding:4px 8px; }
+  td { padding:10px 8px; background:#fff; }
+  tr td:first-child { border-radius:10px 0 0 10px; width:52px; font-weight:900; }
+  tr td:last-child { border-radius:0 10px 10px 0; }
+  .num { text-align:center; font-variant-numeric: tabular-nums; }
+  .score { color:var(--accent); font-weight:900; font-size:1.05rem; }
+  .top1 td { background:#fff3d6; } .top2 td { background:#f1efe9; } .top3 td { background:#fbe6d3; }
+  .empty { text-align:center; color:var(--muted); padding:28px 0; }
+  a.btn { display:inline-block; padding:8px 14px; border-radius:10px; background:var(--accent); color:#fff; text-decoration:none; font-weight:700; font-size:.85rem; }
+  button { padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font:inherit; font-size:.8rem; cursor:pointer; }
+  .meta { color:var(--muted); font-size:.75rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏆 단어의 짜임 랭킹</h1>
+  <p class="sub"><span id="meta" class="meta">불러오는 중…</span><span><button onclick="load()">새로 고침</button> <a class="btn" href="./">문제 풀러 가기</a></span></p>
+  <div class="card" id="board"><div class="empty">불러오는 중…</div></div>
+  <p class="meta" style="margin-top:14px">점수: 단어 하나 10점, 오답마다 −2점(최소 3점), 정답 보기를 쓰면 0점, 여러 층 짜임은 ×1.5. 30초마다 자동 갱신됩니다.</p>
+</div>
+<script>
+const RANK_API = 'https://script.google.com/macros/s/AKfycbwEU20fzO9P3VN5hk9NXReicDOu9f3N_yJi0rH5nSqNSkLf4Wo_zoi1AMOVCt4XozjZsw/exec';
+const esc = s => String(s || '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+async function load() {
+  const board = document.getElementById('board'), meta = document.getElementById('meta');
+  try {
+    const res = await fetch(RANK_API + '?limit=200&t=' + Date.now());
+    const data = await res.json();
+    const rows = (data.rows || []).slice().sort((a, b) => b.score - a.score || a.words - b.words);
+    meta.textContent = `전체 ${rows.length}명 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준`;
+    if (!rows.length) { board.innerHTML = '<div class="empty">아직 기록이 없습니다. 첫 단어를 풀면 올라갑니다.</div>'; return; }
+    board.innerHTML = `<table><thead><tr><th>순위</th><th>이름</th><th class="num">총점</th><th class="num">단어</th><th class="num">오답</th><th class="num">최고 연속</th></tr></thead><tbody>` +
+      rows.map((r, i) => `<tr class="${i < 3 ? 'top' + (i + 1) : ''}"><td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td>${esc(r.name)}</td><td class="num score">${r.score}</td><td class="num">${r.words}</td><td class="num">${r.wrong}</td><td class="num">${r.best}</td></tr>`).join('') +
+      `</tbody></table>`;
+  } catch (e) {
+    board.innerHTML = '<div class="empty">랭킹 서버에 연결하지 못했습니다. 잠시 후 새로 고침해 보세요.</div>';
+    meta.textContent = '';
+  }
+}
+load(); setInterval(load, 30000);
+</script>
+</body>
+</html>
