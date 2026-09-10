@@ -1286,7 +1286,7 @@ const WordEngine = (() => {
         return errors;
     }
 
-    return { build, explain, explainCut, selfCheck, all: () => RECIPES.filter(r => !r.hidden).map(build) };
+    return { build, explain, explainCut, selfCheck, all: () => RECIPES.filter(r => !r.hidden).map(build), byWord: w => build(recipeByWord[w]) };
 })();
 
 /* =====================================================================
@@ -1849,7 +1849,7 @@ function renderStart() {
             <div class="text-center space-y-3">
                 <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white text-4xl shadow-lg shadow-indigo-500/40 glow-active"><i class="fa-solid fa-sitemap"></i></div>
                 <h2 class="text-3xl sm:text-4xl font-black text-slate-100">단어의 짜임 연습</h2>
-                <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">단어를 직접 구성 요소로 나누고, 형태소의 종류와 성격을 밝힌 뒤,<br class="hidden sm:block">어떤 방법으로 만들어졌는지 분류합니다.</p>
+                <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">단어를 직접 구성 요소로 나누고 형태소의 종류와 성격, 형성 방법을 분류합니다.<br class="hidden sm:block">문장 연습에서는 어절→단어→형태소로 나눈 뒤 시제와 피동·사동까지 분석합니다.</p>
                 <div class="flex items-center justify-center gap-4 text-xs pt-1">
                     <span class="text-slate-400">단어 <b class="text-slate-200">${PROBLEMS.length}</b>개 · 기출 단골 <b class="text-amber-300">${examCount}</b>개</span>
                 </div>
@@ -2107,6 +2107,432 @@ window.onload = function () {
     loadWord(0);
     showStart();
 };
+
+/* =====================================================================
+   S. 문장 분석 모드 — 어절→단어→형태소→종류→성격→시제·피사동→단어 형성
+   ===================================================================== */
+let appMode = 'word';   // 'word' | 'sentence'
+
+/* ---- 문장 모드 전용 형태소 뱅크 (조사·어미·피사동 접미사·문장용 어근) ---- */
+const SBANK = {};
+function sadd(key, cat, gloss, extra = {}) { const form = key.split('/')[0]; SBANK[key] = { key, form, text: stripHyphen(form), cat, gloss, ...extra }; }
+[["이/조","주격 조사"],["가/조","주격 조사"],["께서/조","주격 조사(높임)"],["을/조","목적격 조사"],["를/조","목적격 조사"],["은/조","보조사(대조·화제)"],["는/조","보조사(대조·화제)"],["도/조","보조사(역시)"],["만/조","보조사(한정)"],["에/조","부사격 조사(장소·시간)"],["에서/조","부사격 조사(장소)"],["에게/조","부사격 조사(상대)"],["로/조","부사격 조사(방향·수단)"],["으로/조","부사격 조사(방향·수단)"],["의/조","관형격 조사"],["부터/조","보조사(시작점)"],["와/조","접속·부사격 조사"],["과/조","접속·부사격 조사"]].forEach(([k,g]) => sadd(k, "조사", g));
+[["-었-","과거 시제"],["-았-","과거 시제"],["-겠-","미래 시제(추측·의지)"],["-ㄴ-/현","현재 시제 (받침으로 붙음)"],["-는-/현","현재 시제"],["-시-","주체 높임"]].forEach(([k,g]) => sadd(k, "선어말 어미", g));
+[["-다/말","종결 어미(평서)"],["-니/말","종결 어미(의문)"],["-구나/말","종결 어미(감탄)"],["-네/말","종결 어미(감탄)"],["-자/말","종결 어미(청유)"],["-ㄴ/관","관형사형 어미 (받침으로 붙음)"],["-은/관","관형사형 어미"],["-는/관","관형사형 어미"],["-ㄹ/관","관형사형 어미 (받침으로 붙음)"],["-을/관","관형사형 어미"],["-고/연","연결 어미"],["-어/연","연결 어미"],["-아/연","연결 어미"],["-면/연","연결 어미(조건)"]].forEach(([k,g]) => sadd(k, "어말 어미", g));
+[["-이-/피","피동: 당하다"],["-히-/피","피동: 당하다"],["-리-/피","피동: 당하다"],["-기-/피","피동: 당하다"]].forEach(([k,g]) => sadd(k, "피동 접미사", g));
+[["-이-/사","사동: ~하게 하다"],["-히-/사","사동: ~하게 하다"],["-리-/사","사동: ~하게 하다"],["-기-/사","사동: ~하게 하다"],["-우-/사","사동: ~하게 하다"]].forEach(([k,g]) => sadd(k, "사동 접미사", g));
+[["나/대","말하는 사람 자신"],["그/대","앞에서 말한 사람"]].forEach(([k,g]) => sadd(k, "대명사", g));
+[["그/관","앞에서 말한 그"]].forEach(([k,g]) => sadd(k, "관형사", g));
+[["매우/부","정도가 심하게"],["아주/부","정도가 심하게"],["이제/부","지금부터"],["지금/부","이 시간에"],["이미/부","벌써"],["가득/부","꽉 차게"],["절로/부","저절로"]].forEach(([k,g]) => sadd(k, "부사", g));
+[["오늘/명","지금 지나가는 날"],["내일/명","오늘의 다음 날"],["영희/명","사람 이름(고유 명사)"],["벌/곤충","침을 쏘는 곤충"],["누나/명","손위 여자 형제"],["쥐/명","쥐"],["고양이/명","고양이"],["채/명","이미 있는 상태 그대로 (의존 명사)"],["아기/명","어린 아이"],["엄마/명","어머니"],["품/명","가슴 안쪽"],["마을/명","사람들이 모여 사는 곳"]].forEach(([k,g]) => sadd(k, "명사", g));
+[["이르-/형","때가 빠르다"],["예쁘-/형","보기에 좋다"]].forEach(([k,g]) => sadd(k, "형용사 어간", g));
+[["물-/깨물","이로 누르다"],["쌓-/동","포개어 놓다"],["사-/구매","값을 주고 얻다"],["신-/동","발에 꿰다"],["놓-/동","자리에 두다"],["만들-/동","새로 생기게 하다"],["하-/동","행하다"],["업-/동","등에 지다"]].forEach(([k,g]) => sadd(k, "동사 어간", g));
+
+const SCAT = {
+    ...CAT,
+    "조사":        { auto: "의존 형태소", mean: "형식 형태소", kind: "조사", test: t => `체언 뒤에 붙어 문법적 관계를 나타내야 조사예요. 조사는 단어로 세지만 형태소로는 의존·형식이에요.` },
+    "선어말 어미": { auto: "의존 형태소", mean: "형식 형태소", kind: "어미", test: t => `어간과 어말 어미 사이에 끼어 시제(-었-, -겠-, -ㄴ-)나 높임(-시-)을 나타내야 선어말 어미예요.` },
+    "어말 어미":   { auto: "의존 형태소", mean: "형식 형태소", kind: "어미", test: t => `낱말 맨 끝에서 문장을 끝맺거나(-다) 잇거나(-고, -어) 꾸미게(-ㄴ, -는) 해야 어말 어미예요.` },
+    "피동 접미사": { auto: "의존 형태소", mean: "형식 형태소", kind: "접사", test: t => `'당하다'의 뜻을 더해 주어가 동작을 받게 만들어야 피동 접미사예요 (-이-, -히-, -리-, -기-).` },
+    "사동 접미사": { auto: "의존 형태소", mean: "형식 형태소", kind: "접사", test: t => `'~하게 하다'의 뜻을 더해 남에게 동작을 시켜야 사동 접미사예요 (-이-, -히-, -리-, -기-, -우-).` },
+};
+const SCATS = ["명사", "대명사", "수사", "관형사", "부사", "동사 어간", "형용사 어간", "조사", "선어말 어미", "어말 어미", "접두사", "접미사", "피동 접미사", "사동 접미사"];
+
+/* ---- 문장 뱅크: 각 어절 = 단어 스펙 배열, 단어 스펙 "글자:키,키|글자:키" ---- */
+const 과거 = "과거", 현재 = "현재", 미래 = "미래";
+const SENTENCES = [
+  { t: "하늘이 매우 푸르다", tense: 현재, why: "시제를 나타내는 선어말 어미가 없고, 형용사 '푸르다'가 지금 상태를 말하므로 현재입니다.", exam: true, e: [["하늘:하늘","이:이/조"],["매우:매우/부"],["푸르:푸르-|다:-다/말"]] },
+  { t: "나는 밥을 먹었다", tense: 과거, why: "'먹었다'에 과거 시제 선어말 어미 '-었-'이 들어 있습니다.", exam: true, e: [["나:나/대","는:는/조"],["밥:밥","을:을/조"],["먹:먹-|었:-었-|다:-다/말"]] },
+  { t: "새 옷이 아주 예쁘다", tense: 현재, why: "형용사 '예쁘다'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, e: [["새:새"],["옷:옷","이:이/조"],["아주:아주/부"],["예쁘:예쁘-/형|다:-다/말"]] },
+  { t: "이른 아침에 영희가 큰 벌에 물렸다", tense: 과거, why: "'물렸다'의 '렸'은 피동 접미사 '-리-'와 과거 시제 선어말 어미 '-었-'이 줄어든 것입니다.", exam: true, e: [["이른:이르-/형,-ㄴ/관"],["아침:아침","에:에/조"],["영희:영희/명","가:가/조"],["큰:크-,-ㄴ/관"],["벌:벌/곤충","에:에/조"],["물:물-/깨물|렸:-리-/피,-었-|다:-다/말"]] },
+  { t: "하늘에 별이 많다", tense: 현재, why: "형용사 '많다'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, e: [["하늘:하늘","에:에/조"],["별:별","이:이/조"],["많:많-|다:-다/말"]] },
+  { t: "나는 오늘도 책을 읽었다", tense: 과거, why: "'읽었다'에 과거 시제 선어말 어미 '-었-'이 있습니다.", exam: true, e: [["나:나/대","는:는/조"],["오늘:오늘/명","도:도/조"],["책:책","을:을/조"],["읽:읽-|었:-었-|다:-다/말"]] },
+  { t: "누나가 아이를 울렸다", tense: 과거, why: "'울렸다'의 '렸'은 사동 접미사 '-리-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["누나:누나/명","가:가/조"],["아이:아이","를:를/조"],["울:울-|렸:-리-/사,-었-|다:-다/말"]] },
+  { t: "아이가 개에게 물렸다", tense: 과거, why: "'물렸다'에 과거 '-었-'이 있습니다. '-리-'는 피동 접미사입니다.", exam: true, e: [["아이:아이","가:가/조"],["개:개","에게:에게/조"],["물:물-/깨물|렸:-리-/피,-었-|다:-다/말"]] },
+  { t: "쥐가 고양이에게 잡혔다", tense: 과거, why: "'잡혔다'의 '혔'은 피동 접미사 '-히-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["쥐:쥐/명","가:가/조"],["고양이:고양이/명","에게:에게/조"],["잡:잡-|혔:-히-/피,-었-|다:-다/말"]] },
+  { t: "눈이 많이 쌓였다", tense: 과거, why: "'쌓였다'의 '였'은 피동 접미사 '-이-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, comp: { "많이": "많이" }, e: [["눈:눈/눈","이:이/조"],["많:많-|이:-이/부"],["쌓:쌓-/동|였:-이-/피,-었-|다:-다/말"]] },
+  { t: "바람에 꽃잎이 흔들렸다", tense: 과거, why: "'흔들렸다'의 '렸'은 피동 접미사 '-리-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, comp: { "꽃잎": "꽃잎" }, e: [["바람:바람","에:에/조"],["꽃:꽃|잎:잎","이:이/조"],["흔들:흔들-|렸:-리-/피,-었-|다:-다/말"]] },
+  { t: "나는 내일 바다에 가겠다", tense: 미래, why: "'가겠다'에 미래 시제(의지) 선어말 어미 '-겠-'이 있습니다.", exam: true, e: [["나:나/대","는:는/조"],["내일:내일/명"],["바다:바다","에:에/조"],["가:가-|겠:-겠-|다:-다/말"]] },
+  { t: "우리는 이제 집으로 간다", tense: 현재, why: "'간다'의 '간'은 어간 '가-'에 현재 시제 선어말 어미 '-ㄴ-'이 받침으로 붙은 것입니다.", exam: true, e: [["우리:우리","는:는/조"],["이제:이제/부"],["집:집","으로:으로/조"],["간:가-,-ㄴ-/현|다:-다/말"]] },
+  { t: "아이는 지금 밥을 먹는다", tense: 현재, why: "'먹는다'에 현재 시제 선어말 어미 '-는-'이 있습니다.", exam: true, e: [["아이:아이","는:는/조"],["지금:지금/부"],["밥:밥","을:을/조"],["먹:먹-|는:-는-/현|다:-다/말"]] },
+  { t: "할머니께서 오셨다", tense: 과거, why: "'오셨다'의 '셨'은 높임 '-시-'와 과거 '-었-'이 줄어든 것입니다. '께서'는 높임 주격 조사입니다.", exam: true, e: [["할머니:할머니","께서:께서/조"],["오:오-|셨:-시-,-었-|다:-다/말"]] },
+  { t: "그는 신을 신은 채로 집에 들어갔다", tense: 과거, why: "서술어 '들어갔다'의 '갔'에 과거 '-았-'이 들어 있습니다. '채'는 의존 명사로 자립 형태소이고, '로'는 조사입니다.", exam: true, comp: { "들어갔다": "들어가다" }, e: [["그:그/대","는:는/조"],["신:신","을:을/조"],["신:신-/동|은:-은/관"],["채:채/명","로:로/조"],["집:집","에:에/조"],["들:들-|어:-어/연|갔:가-,-았-|다:-다/말"]] },
+  { t: "아이는 눈을 감은 채로 웃었다", tense: 과거, why: "서술어 '웃었다'에 과거 '-었-'이 있습니다. '감은 채로'의 '채'는 의존 명사(자립 형태소)입니다.", exam: true, e: [["아이:아이","는:는/조"],["눈:눈","을:을/조"],["감:감-|은:-은/관"],["채:채/명","로:로/조"],["웃:웃-|었:-었-|다:-다/말"]] },
+  { t: "봄비가 아침부터 내렸다", tense: 과거, why: "'내렸다'의 '내렸'은 어간 '내리-'에 과거 '-었-'이 붙으며 줄어든 것입니다.", exam: true, comp: { "봄비": "봄비" }, e: [["봄:봄|비:비","가:가/조"],["아침:아침","부터:부터/조"],["내렸:내리-,-었-|다:-다/말"]] },
+  { t: "첫눈이 소리 없이 내린다", tense: 현재, why: "'내린다'의 '내린'은 어간 '내리-'에 현재 '-ㄴ-'이 받침으로 붙은 것입니다.", exam: true, comp: { "첫눈": "첫눈", "없이": "없이" }, e: [["첫:첫|눈:눈/눈","이:이/조"],["소리:소리"],["없:없-|이:-이/부"],["내린:내리-,-ㄴ-/현|다:-다/말"]] },
+  { t: "나는 새 지우개를 샀다", tense: 과거, why: "'샀다'의 '샀'은 어간 '사-'에 과거 '-았-'이 줄어 붙은 것입니다.", exam: true, comp: { "지우개": "지우개" }, e: [["나:나/대","는:는/조"],["새:새"],["지우:지우-|개:-개","를:를/조"],["샀:사-/구매,-았-|다:-다/말"]] },
+  { t: "맨발로 뛰어가는 아이가 보인다", tense: 현재, why: "'보인다'의 '인'은 피동 접미사 '-이-'와 현재 '-ㄴ-'이 한 글자에 든 것입니다.", exam: true, comp: { "맨발": "맨발", "뛰어가는": "뛰어가다" }, e: [["맨:맨-|발:발","로:로/조"],["뛰:뛰-|어:-어/연|가:가-|는:-는/관"],["아이:아이","가:가/조"],["보:보-|인:-이-/피,-ㄴ-/현|다:-다/말"]] },
+  { t: "누나가 아이를 웃겼다", tense: 과거, why: "'웃겼다'의 '겼'은 사동 접미사 '-기-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["누나:누나/명","가:가/조"],["아이:아이","를:를/조"],["웃:웃-|겼:-기-/사,-었-|다:-다/말"]] },
+  { t: "아기가 엄마 품에서 잠들었다", tense: 과거, why: "'잠들었다'에 과거 '-었-'이 있습니다. '잠들다'는 '잠'(자-+-ㅁ)과 '들다'가 결합한 합성어입니다.", exam: true, comp: { "잠들었다": "잠들다" }, e: [["아기:아기/명","가:가/조"],["엄마:엄마/명"],["품:품/명","에서:에서/조"],["잠:자-,-ㅁ|들:들-|었:-었-|다:-다/말"]] },
+  { t: "손톱깎이로 손톱을 깎았다", tense: 과거, why: "'깎았다'에 과거 '-았-'이 있습니다.", exam: true, comp: { "손톱깎이": "손톱깎이" }, e: [["손톱:손톱|깎:깎-|이:-이","로:로/조"],["손톱:손톱","을:을/조"],["깎:깎-|았:-았-|다:-다/말"]] },
+  { t: "우리 마을에 새 다리가 놓였다", tense: 과거, why: "'놓였다'의 '였'은 피동 접미사 '-이-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["우리:우리"],["마을:마을/명","에:에/조"],["새:새"],["다리:다리/교","가:가/조"],["놓:놓-/동|였:-이-/피,-었-|다:-다/말"]] },
+  { t: "겨울밤에 눈사람을 만들었다", tense: 과거, why: "'만들었다'에 과거 '-었-'이 있습니다.", exam: true, comp: { "겨울밤": "겨울밤", "눈사람": "눈사람" }, e: [["겨울:겨울|밤:밤","에:에/조"],["눈:눈/눈|사람:사람","을:을/조"],["만들:만들-/동|었:-었-|다:-다/말"]] },
+  { t: "그 일은 이미 끝났다", tense: 과거, why: "'끝났다'의 '났'은 어간 '나-'에 과거 '-았-'이 줄어 붙은 것입니다.", exam: true, comp: { "끝났다": "끝나다" }, e: [["그:그/관"],["일:일","은:은/조"],["이미:이미/부"],["끝:끝|났:나-,-았-|다:-다/말"]] },
+  { t: "물이 얼음이 되었다", tense: 과거, why: "'되었다'에 과거 '-었-'이 있습니다. '얼음'은 '얼-'에 접미사 '-음'이 붙은 파생어입니다.", exam: true, comp: { "얼음": "얼음" }, e: [["물:물","이:이/조"],["얼:얼-|음:-음","이:이/조"],["되:되-/동|었:-었-|다:-다/말"]] },
+  { t: "아이들이 물놀이를 한다", tense: 현재, why: "'한다'의 '한'은 어간 '하-'에 현재 '-ㄴ-'이 받침으로 붙은 것입니다.", exam: true, comp: { "아이들": "아이들", "물놀이": "물놀이" }, e: [["아이:아이|들:-들","이:이/조"],["물:물|놀:놀-|이:-이","를:를/조"],["한:하-/동,-ㄴ-/현|다:-다/말"]] },
+  { t: "나는 오늘 일찍 일어났다", tense: 과거, why: "'일어났다'의 '났'은 어간 '나-'에 과거 '-았-'이 줄어 붙은 것입니다.", exam: true, comp: { "일어났다": "일어나다" }, e: [["나:나/대","는:는/조"],["오늘:오늘/명"],["일찍:일찍"],["일:일-|어:-어/연|났:나-,-았-|다:-다/말"]] },
+  { t: "그 말을 듣고 눈물이 났다", tense: 과거, why: "서술어 '났다'에 과거 '-았-'이 있습니다. '듣고'의 '-고'는 앞뒤를 잇는 연결 어미입니다.", exam: true, comp: { "눈물": "눈물" }, e: [["그:그/관"],["말:말","을:을/조"],["듣:듣-|고:-고/연"],["눈:눈|물:물","이:이/조"],["났:나-,-았-|다:-다/말"]] },
+  { t: "아기가 엄마에게 업혔다", tense: 과거, why: "'업혔다'의 '혔'은 피동 접미사 '-히-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["아기:아기/명","가:가/조"],["엄마:엄마/명","에게:에게/조"],["업:업-/동|혔:-히-/피,-었-|다:-다/말"]] },
+  { t: "빈손으로 돌아온 아이가 밥을 먹었다", tense: 과거, why: "서술어 '먹었다'에 과거 '-었-'이 있습니다. '돌아온'의 '-ㄴ'은 관형사형 어미입니다.", exam: true, comp: { "빈손": "빈손", "돌아온": "돌아오다" }, e: [["빈:비-,-ㄴ/관|손:손","으로:으로/조"],["돌:돌-|아:-아/연|온:오-,-ㄴ/관"],["아이:아이","가:가/조"],["밥:밥","을:을/조"],["먹:먹-|었:-었-|다:-다/말"]] },
+  { t: "높푸른 하늘이 눈부시다", tense: 현재, why: "형용사 '눈부시다'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, comp: { "높푸른": "높푸르다", "눈부시다": "눈부시다" }, e: [["높:높-|푸른:푸르-,-ㄴ/관"],["하늘:하늘","이:이/조"],["눈:눈|부시:부시-|다:-다/말"]] },
+  { t: "군침이 절로 돌았다", tense: 과거, why: "'돌았다'에 과거 '-았-'이 있습니다.", exam: true, comp: { "군침": "군침" }, e: [["군:군-|침:침","이:이/조"],["절로:절로/부"],["돌:돌-|았:-았-|다:-다/말"]] },
+  { t: "누나가 아이에게 책을 읽혔다", tense: 과거, why: "'읽혔다'의 '혔'은 사동 접미사 '-히-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["누나:누나/명","가:가/조"],["아이:아이","에게:에게/조"],["책:책","을:을/조"],["읽:읽-|혔:-히-/사,-었-|다:-다/말"]] },
+  { t: "아이가 노래를 듣고 웃는다", tense: 현재, why: "'웃는다'에 현재 '-는-'이 있습니다.", exam: true, e: [["아이:아이","가:가/조"],["노래:노래","를:를/조"],["듣:듣-|고:-고/연"],["웃:웃-|는:-는-/현|다:-다/말"]] },
+  { t: "나는 그 책을 읽겠다", tense: 미래, why: "'읽겠다'에 미래(의지) '-겠-'이 있습니다.", exam: true, e: [["나:나/대","는:는/조"],["그:그/관"],["책:책","을:을/조"],["읽:읽-|겠:-겠-|다:-다/말"]] },
+  { t: "할머니께서 노래를 하셨다", tense: 과거, why: "'하셨다'의 '셨'은 높임 '-시-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["할머니:할머니","께서:께서/조"],["노래:노래","를:를/조"],["하:하-/동|셨:-시-,-었-|다:-다/말"]] },
+  { t: "아이가 눈을 감은 채로 노래를 한다", tense: 현재, why: "서술어 '한다'의 '한'은 어간 '하-'에 현재 '-ㄴ-'이 받침으로 붙은 것입니다. '채'는 의존 명사입니다.", exam: true, e: [["아이:아이","가:가/조"],["눈:눈","을:을/조"],["감:감-|은:-은/관"],["채:채/명","로:로/조"],["노래:노래","를:를/조"],["한:하-/동,-ㄴ-/현|다:-다/말"]] },
+];
+
+/* ---- 문장 엔진: 스펙 → 어절/단어/청크/형태소 ---- */
+const smorph = k => { const b = SBANK[k] || BANK[k]; if (!b) throw new Error('문장 뱅크에 없는 형태소: ' + k); const cat = b.cat === '어미' ? '어말 어미' : b.cat; return { ...b, cat, auto: SCAT[cat].auto, mean: SCAT[cat].mean }; };
+function buildSentence(sp) {
+    const eojeols = sp.e.map(ws => {
+        const words = ws.map(spec => {
+            const chunks = spec.split('|').map(tok => { const [text, keys] = tok.split(':'); return { text, keys: keys.split(','), morphs: keys.split(',').map(smorph) }; });
+            const text = chunks.map(c => c.text).join('');
+            const morphs = chunks.flatMap(c => c.morphs);
+            const isJosa = morphs.length === 1 && morphs[0].cat === '조사';
+            const hasStem = morphs.some(m => isStemCat(m.cat));
+            const voice = morphs.some(m => m.cat === '피동 접미사') ? '피동' : morphs.some(m => m.cat === '사동 접미사') ? '사동' : '해당 없음';
+            return { text, chunks, morphs, isJosa, hasStem, voice, comp: (sp.comp || {})[text] || null };
+        });
+        return { text: words.map(w => w.text).join(''), words };
+    });
+    const words = eojeols.flatMap(e => e.words);
+    const morphs = words.flatMap(w => w.morphs);
+    return { text: sp.t, tense: sp.tense, why: sp.why, exam: !!sp.exam, eojeols, words, morphs,
+        counts: { auto: morphs.filter(m => m.auto === '자립 형태소').length, dep: morphs.filter(m => m.auto === '의존 형태소').length, real: morphs.filter(m => m.mean === '실질 형태소').length, form: morphs.filter(m => m.mean === '형식 형태소').length } };
+}
+function sentenceSelfCheck() {
+    const errs = [];
+    SENTENCES.forEach(sp => { try { const s = buildSentence(sp); if (s.eojeols.map(e => e.text).join(' ') !== sp.t) errs.push(sp.t + ': 어절 결합이 문장과 다름 (' + s.eojeols.map(e => e.text).join(' ') + ')'); Object.keys(sp.comp || {}).forEach(w => { if (!s.words.some(x => x.text === w)) errs.push(sp.t + ': comp 단어 없음 ' + w); }); } catch (e) { errs.push(sp.t + ': ' + e.message); } });
+    return errs;
+}
+let SPROBLEMS = [];
+
+/* ---- 상태 ---- */
+let S = null, sIdx = 0, sPhase = 1, sWrong = 0, sRevealed = false, sPoints = null;
+let s1 = null, s2 = null, s3 = null, s4 = null, s5 = null, s6 = null;
+const SPHASES = ["1. 어절 → 단어", "2. 단어 → 형태소", "3. 형태소 종류", "4. 형태소 성격", "5. 시제·피동·사동", "6. 단어 형성"];
+
+function loadSentence(i) {
+    sIdx = i; S = SPROBLEMS[i]; sPhase = 1; sWrong = 0; sRevealed = false; sPoints = null; currentPhase = 99;
+    s1 = { cuts: S.eojeols.map(() => new Set()), ok: new Set(), bad: new Set() };
+    s2 = { cuts: S.words.map(() => new Set()), fused: S.words.map(() => new Set()), ok: new Set(), bad: new Set(), queue: [], cur: null };
+    s3 = { assigned: new Array(S.morphs.length).fill(null), active: 0, ok: new Set(), bad: new Set() };
+    s4 = { auto: new Array(S.morphs.length).fill(null), mean: new Array(S.morphs.length).fill(null), okA: new Set(), okM: new Set(), badA: new Set(), badM: new Set(), done: false };
+    s5 = { tense: null, voice: S.words.map(() => null), done: false, badT: false, badV: new Set() };
+    s6 = { picked: new Set(), ok: false, queue: [], cur: null, path: [], sub: null, done: [] };
+    const sel = document.getElementById('word-selector');
+    sel.innerHTML = SPROBLEMS.map((p, k) => `<option value="${k}">${k + 1}. ${p.text}</option>`).join('');
+    sel.value = i;
+    sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0);
+}
+function sNext() { loadSentence((sIdx + 1) % SPROBLEMS.length); }
+function sPrev() { loadSentence((sIdx - 1 + SPROBLEMS.length) % SPROBLEMS.length); }
+function sMarkWrong() { sWrong++; playSound('wrong'); }
+
+function sRenderPhaseBar() {
+    const st = n => n === sPhase ? 'cur' : n < sPhase ? 'done' : 'todo';
+    const dot = n => { const k = st(n); return k === 'cur' ? 'bg-indigo-600 text-white' : k === 'done' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'; };
+    const full = SPHASES.map((name, i) => { const n = i + 1, k = st(n); const cls = k === 'cur' ? 'font-bold text-indigo-400' : k === 'done' ? 'font-semibold text-emerald-400' : 'font-semibold text-slate-500'; return `<div class="flex items-center gap-1.5 whitespace-nowrap ${cls}"><span class="w-6 h-6 rounded-full ${dot(n)} flex items-center justify-center text-xs">${k === 'done' ? '✓' : n}</span><span class="text-xs">${name.replace(/^\d\. /, '')}</span></div>`; }).join('<span class="flex-1 h-px bg-slate-700 mx-1"></span>');
+    const curName = sPhase <= 6 ? SPHASES[sPhase - 1] : '완료 · 요약';
+    const mobile = `<div class="flex items-center gap-1">${SPHASES.map((_, i) => `<span class="w-6 h-6 rounded-full ${dot(i + 1)} flex items-center justify-center text-[10px] font-bold">${st(i + 1) === 'done' ? '✓' : i + 1}</span>`).join('')}</div><div class="font-bold text-indigo-400 text-xs truncate">${curName}</div>`;
+    document.getElementById('phase-bar').innerHTML = `<div class="hidden md:flex w-full items-center gap-1">${full}</div><div class="flex md:hidden w-full items-center justify-between gap-2">${mobile}</div>`;
+}
+function sBanner() {
+    return `<div class="relative bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 border-2 border-indigo-500 rounded-2xl px-6 sm:px-8 py-3 sm:py-4 text-center shadow-2xl glow-active w-full max-w-2xl">
+        <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-500 text-white text-[10px] uppercase font-black px-3 py-0.5 rounded-full shadow whitespace-nowrap">분석 대상 문장${S.exam ? ' · ★ 기출 단골' : ''}</span>
+        <h2 class="text-2xl sm:text-3xl font-black text-white tracking-wide leading-snug">${S.text}</h2>
+        <p class="text-[11px] text-indigo-200/80 mt-1">어절 ${S.eojeols.length}개${sPhase > 1 ? ` · 단어 ${S.words.length}개` : ''}${sPhase > 2 ? ` · 형태소 ${S.morphs.length}개` : ''}</p>
+    </div>`;
+}
+function sRenderApp() {
+    let html = sBanner();
+    html += sPhase === 1 ? sRender1() : sPhase === 2 ? sRender2() : sPhase === 3 ? sRender3() : sPhase === 4 ? sRender4() : sPhase === 5 ? sRender5() : sPhase === 6 ? sRender6() : sRenderResult();
+    document.getElementById('app-container').innerHTML = html;
+}
+const sChips = (text, cutSet, onGap, extra) => {
+    const chars = text.split(''); let h = '';
+    chars.forEach((ch, i) => {
+        h += `<span class="cchip inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-slate-600 text-lg font-black">${ch}</span>`;
+        if (i < chars.length - 1) h += `<button class="gap mx-0.5 ${cutSet.has(i + 1) ? 'sel' : ''}" onclick="${onGap}(${i + 1})" title="여기서 자르기"><i class="fa-solid fa-scissors"></i></button>`;
+    });
+    return h + (extra || '');
+};
+
+/* ---- 1단계: 어절 → 단어 (조사 떼기) ---- */
+function sRender1() {
+    let body = `<div class="w-full flex flex-wrap justify-center gap-3">`;
+    S.eojeols.forEach((e, ei) => {
+        const state = s1.ok.has(ei) ? 'border-emerald-500' : s1.bad.has(ei) ? 'border-rose-500' : 'border-slate-700';
+        body += `<div class="bg-slate-950 border-2 ${state} rounded-xl p-3 flex flex-col items-center gap-2"><div class="text-[10px] text-slate-500">어절 ${ei + 1}</div><div class="flex items-center gap-0.5">${sChips(e.text, s1.cuts[ei], `s1Gap.bind(null,${ei})`)}</div>${s1.ok.has(ei) ? `<div class="text-[11px] text-emerald-300 font-bold">${e.words.map(w => w.text).join(' + ')}</div>` : ''}</div>`;
+    });
+    body += `</div>` + primaryBtn('s1Validate()', '단어 나누기 검증') + `<p class="hint text-[11px] text-slate-500 text-center">조사(이/가, 을/를, 은/는, 에, 에서, 에게, 로, 도, 부터, 께서 …)는 앞말에 붙어 있지만 하나의 단어예요. 체언 뒤의 조사를 떼어 내세요. 용언(먹었다, 이른)은 어미까지 한 단어이니 자르지 않아요.</p>`;
+    return card("1단계: 어절을 단어로", "fa-scissors", "각 어절에서 조사를 떼어 단어로 나누세요. 나눌 곳이 없는 어절은 그대로 두면 됩니다.", body, 'max-w-3xl');
+}
+window.s1Gap = (ei, pos) => { if (s1.ok.has(ei)) return; const c = s1.cuts[ei]; c.has(pos) ? c.delete(pos) : c.add(pos); s1.bad.delete(ei); playSound('click'); sRenderApp(); };
+function expectedCuts(items) { const set = new Set(); let p = 0; items.slice(0, -1).forEach(it => { p += it.text.length; set.add(p); }); return set; }
+const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
+function s1Validate() {
+    const wrong = [];
+    S.eojeols.forEach((e, ei) => { if (s1.ok.has(ei)) return; if (sameSet(s1.cuts[ei], expectedCuts(e.words))) s1.ok.add(ei); else { s1.bad.add(ei); wrong.push(ei); } });
+    if (!wrong.length) { playSound('correct'); sPhase = 2; sRenderPhaseBar(); sRenderApp(); return; }
+    sMarkWrong(); sRenderApp();
+    showExplanationModal(`빨간 어절 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(ei => { const e = S.eojeols[ei]; const j = e.words.filter(w => w.isJosa); return `• '${e.text}' → ${e.words.length === 1 ? `조사가 없어 한 단어입니다. ${e.words[0].hasStem ? '용언은 어간·어미를 합쳐 한 단어로 봅니다.' : ''}` : `${e.words.map(w => `'${w.text}'`).join(' + ')} (${j.map(w => `${eunNeun(w.text)} 조사`).join(', ')})`}`; }).join('\n'));
+}
+
+/* ---- 2단계: 단어 → 형태소 (자르기 + 글자 안 겹침 표시 + 겹침 나누기) ---- */
+function chunkRanges(text, cutSet) { const pts = [0, ...[...cutSet].sort((a, b) => a - b), text.length]; const out = []; for (let i = 0; i < pts.length - 1; i++) out.push([pts[i], pts[i + 1]]); return out; }
+function sRender2() {
+    if (s2.cur) return sRenderInner();
+    let body = `<div class="w-full flex flex-wrap justify-center gap-3">`;
+    S.words.forEach((w, wi) => {
+        const state = s2.ok.has(wi) ? 'border-emerald-500' : s2.bad.has(wi) ? 'border-rose-500' : 'border-slate-700';
+        const ranges = chunkRanges(w.text, s2.cuts[wi]);
+        const toggles = s2.ok.has(wi) ? '' : `<div class="flex justify-center gap-1 flex-wrap">${ranges.map(([a, b]) => `<button onclick="s2Fuse(${wi},${a})" class="text-[10px] px-2 py-0.5 rounded-full border ${s2.fused[wi].has(a) ? 'bg-sky-600 border-sky-400 text-white' : 'border-slate-600 text-slate-400'}" title="이 덩어리 글자 안에 형태소가 둘 겹쳐 있음">${w.text.slice(a, b)} 겹침</button>`).join('')}</div>`;
+        body += `<div class="bg-slate-950 border-2 ${state} rounded-xl p-3 flex flex-col items-center gap-2"><div class="text-[10px] text-slate-500">단어 ${wi + 1}</div><div class="flex items-center gap-0.5">${sChips(w.text, s2.cuts[wi], `s2Gap.bind(null,${wi})`)}</div>${toggles}${s2.ok.has(wi) ? `<div class="text-[11px] text-emerald-300 font-bold">${w.morphs.map(m => m.form).join(' + ')}</div>` : ''}</div>`;
+    });
+    body += `</div>` + primaryBtn('s2Validate()', '형태소 나누기 검증') + `<p class="hint text-[11px] text-slate-500 text-center">가위로 글자 사이를 자르고, '렸'(-리-+-었-)이나 '큰'(크-+-ㄴ)처럼 한 글자 안에 형태소가 둘 겹쳐 있으면 그 덩어리의 '겹침'을 켜세요. 어간·선어말 어미·어말 어미·접사를 모두 따로 떼야 합니다.</p>`;
+    return card("2단계: 단어를 형태소로", "fa-cubes", "각 단어를 뜻을 가진 가장 작은 단위로 나누세요. 조사 한 글자짜리는 그대로 두면 됩니다.", body, 'max-w-3xl');
+}
+window.s2Gap = (wi, pos) => { if (s2.ok.has(wi)) return; const c = s2.cuts[wi]; c.has(pos) ? c.delete(pos) : c.add(pos); s2.fused[wi] = new Set([...s2.fused[wi]].filter(a => a === 0 || c.has(a))); s2.bad.delete(wi); playSound('click'); sRenderApp(); };
+window.s2Fuse = (wi, a) => { if (s2.ok.has(wi)) return; const f = s2.fused[wi]; f.has(a) ? f.delete(a) : f.add(a); s2.bad.delete(wi); playSound('click'); sRenderApp(); };
+function s2Validate() {
+    const wrong = [];
+    S.words.forEach((w, wi) => {
+        if (s2.ok.has(wi)) return;
+        const exp = expectedCuts(w.chunks);
+        let start = 0; const expFused = new Set(); w.chunks.forEach(c => { if (c.morphs.length > 1) expFused.add(start); start += c.text.length; });
+        if (sameSet(s2.cuts[wi], exp) && sameSet(s2.fused[wi], expFused)) { s2.ok.add(wi); w.chunks.forEach(c => { if (c.morphs.length > 1) s2.queue.push({ wi, chunk: c }); }); }
+        else { s2.bad.add(wi); wrong.push(wi); }
+    });
+    if (wrong.length) {
+        sMarkWrong(); sRenderApp();
+        showExplanationModal(`빨간 단어 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(wi => { const w = S.words[wi]; const fused = w.chunks.filter(c => c.morphs.length > 1); return `• '${w.text}' → ${w.chunks.map(c => c.text).join(' | ')}${fused.length ? `  (겹침: ${fused.map(c => `'${c.text}' = ${c.morphs.map(m => m.form).join(' + ')}`).join(', ')})` : ''}`; }).join('\n'));
+        return;
+    }
+    playSound('correct'); s2Advance();
+}
+function s2Advance() {
+    if (s2.queue.length) { const q = s2.queue.shift(); const forms = q.chunk.morphs.map(m => m.form); s2.cur = { ...q, ...innerSplitOptions(q.chunk.text, forms), forms }; sRenderApp(); return; }
+    s2.cur = null; sPhase = 3; sRenderPhaseBar(); sRenderApp();
+}
+function sRenderInner() {
+    const c = s2.cur;
+    const body = `<div class="w-full bg-sky-950/40 border-2 border-sky-500/60 rounded-2xl p-4 space-y-3">
+        <div class="text-sm font-bold text-sky-200 text-center">'${S.words[c.wi].text}'의 '${c.chunk.text}'을(를) 글자 안에서 어떻게 나눌까요?</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${c.options.map((o, k) => `<button onclick="s2PickInner(${k})" class="py-3 px-3 bg-slate-800 hover:bg-sky-700 text-slate-100 hover:text-white rounded-xl font-black text-base border border-slate-600 hover:border-sky-400 transition tracking-wider">${o}</button>`).join('')}</div></div>`;
+    return card("2단계: 겹친 글자 나누기", "fa-wand-magic-sparkles", "받침이나 모음 안에 숨은 형태소를 골라내세요.", body);
+}
+window.s2PickInner = k => {
+    const c = s2.cur, choice = c.options[k];
+    if (choice === c.correct) { playSound('correct'); s2Advance(); return; }
+    sMarkWrong();
+    const ms = c.chunk.morphs;
+    showExplanationModal(`'${choice}'이(가) 아닙니다.\n\n'${c.chunk.text}'은(는) ${c.correct}${hasBatchim(c.correct) ? '으로' : '로'} 나뉩니다. ${ms.map(m => `${eunNeun(m.form)} ${m.cat}(${m.gloss})`).join(', ')}입니다.`);
+};
+
+/* ---- 3단계: 형태소 종류 ---- */
+function sRender3() {
+    let slots = `<div class="w-full flex flex-wrap justify-center gap-2">`;
+    S.morphs.forEach((m, i) => {
+        const val = s3.assigned[i], state = s3.ok.has(i) ? 'ok' : s3.bad.has(i) ? 'bad' : val ? 'filled' : '', active = i === s3.active && !s3.ok.has(i) ? 'active' : '';
+        slots += `<div class="bg-slate-950 border border-slate-800 p-2 rounded-xl flex flex-col items-center gap-1.5 w-[104px]"><div class="text-base font-black text-amber-300 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-700 w-full text-center">${stripHyphen(m.form)}</div><div onclick="s3Slot(${i})" class="slot ${state} ${active} w-full rounded-lg flex items-center justify-center p-1 text-[11px] font-bold ${state === 'ok' ? 'text-emerald-200' : state === 'bad' ? 'text-rose-200' : 'text-white'}" style="min-height:34px">${val || '<span class="text-slate-500 font-medium">배치</span>'}</div></div>`;
+    });
+    slots += `</div><div class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3"><div class="text-xs font-bold text-slate-400 mb-2"><i class="fa-solid fa-cubes"></i> 품사·문법 요소 블록:</div><div class="flex flex-wrap gap-1.5 justify-center">${SCATS.map((c, k) => `<button onclick="s3Assign(${k})" class="block-chip bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 px-3 py-1.5 rounded-xl text-xs font-bold shadow-md transition">🧩 ${c}</button>`).join('')}</div></div>` + primaryBtn('s3Validate()', '형태소 종류 검증');
+    return card("3단계: 형태소 종류", "fa-puzzle-piece", "문장의 형태소 하나하나가 어떤 품사·문법 요소인지 고르세요. 조사, 선어말 어미, 어말 어미, 피동·사동 접미사를 구별하는 게 핵심입니다.", slots, 'max-w-3xl');
+}
+window.s3Slot = i => { if (s3.ok.has(i)) return; if (s3.assigned[i] !== null) { s3.assigned[i] = null; s3.bad.delete(i); } s3.active = i; playSound('click'); sRenderApp(); };
+window.s3Assign = k => { let i = s3.active; if (i === null || s3.ok.has(i) || i >= S.morphs.length) { i = s3.assigned.findIndex((v, j) => v === null && !s3.ok.has(j)); if (i === -1) return; } s3.assigned[i] = SCATS[k]; s3.bad.delete(i); const n = s3.assigned.findIndex((v, j) => v === null && !s3.ok.has(j)); s3.active = n === -1 ? null : n; playSound('click'); sRenderApp(); };
+function s3Validate() {
+    if (s3.assigned.includes(null)) { playSound('wrong'); showExplanationModal('모든 형태소에 블록을 배치해 주세요.'); return; }
+    const wrong = [];
+    S.morphs.forEach((m, i) => { if (s3.assigned[i] === m.cat) s3.ok.add(i); else { s3.bad.add(i); wrong.push(i); } });
+    if (!wrong.length) { playSound('correct'); sPhase = 4; sRenderPhaseBar(); sRenderApp(); return; }
+    sMarkWrong(); s3.active = wrong[0]; sRenderApp();
+    showExplanationModal(`빨간 슬롯 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(i => { const m = S.morphs[i], c = s3.assigned[i]; return `• '${m.form}' → ${c}?  ${SCAT[c].test(m.text)}`; }).join('\n\n'));
+}
+
+/* ---- 4단계: 형태소 성격 + 개수 ---- */
+function sRender4() {
+    const btn = (kind, i, label, val, bad, ok) => { const on = val === label; const cls = ok && on ? 'ok' : bad && on ? 'bad' : on ? 'on' : ''; return `<button ${ok ? 'disabled' : ''} onclick="s4Pick('${kind}',${i},'${label}')" class="pick ${cls} flex-1 px-1 py-1.5 rounded-lg text-[11px] font-bold border border-slate-600 bg-slate-800 text-slate-200 whitespace-nowrap">${label.replace(' 형태소', '')}</button>`; };
+    let body = `<div class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">`;
+    S.morphs.forEach((m, i) => {
+        body += `<div class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col gap-1.5"><div class="flex items-baseline gap-2"><span class="font-black text-amber-300 text-lg">${stripHyphen(m.form)}</span><span class="text-[10px] text-slate-500">${m.cat}</span></div><div class="flex gap-1">${btn('auto', i, '자립 형태소', s4.auto[i], s4.badA.has(i), s4.okA.has(i))}${btn('auto', i, '의존 형태소', s4.auto[i], s4.badA.has(i), s4.okA.has(i))}</div><div class="flex gap-1">${btn('mean', i, '실질 형태소', s4.mean[i], s4.badM.has(i), s4.okM.has(i))}${btn('mean', i, '형식 형태소', s4.mean[i], s4.badM.has(i), s4.okM.has(i))}</div></div>`;
+    });
+    body += `</div>`;
+    if (s4.done) body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-center text-sm text-emerald-200">형태소 ${S.morphs.length}개 = 자립 <b>${S.counts.auto}</b> + 의존 <b>${S.counts.dep}</b> = 실질 <b>${S.counts.real}</b> + 형식 <b>${S.counts.form}</b></div>` + primaryBtn('s4Next()', '다음 단계 (시제·피동·사동)');
+    else body += primaryBtn('s4Validate()', '형태소 성격 검증');
+    return card("4단계: 형태소 성격", "fa-tags", "자립/의존, 실질/형식을 고르세요. 시험에서는 이 개수를 세는 문제가 자주 나옵니다.", body, 'max-w-3xl');
+}
+window.s4Pick = (kind, i, label) => { if (kind === 'auto') { if (s4.okA.has(i)) return; s4.auto[i] = label; s4.badA.delete(i); } else { if (s4.okM.has(i)) return; s4.mean[i] = label; s4.badM.delete(i); } playSound('click'); sRenderApp(); };
+function s4Validate() {
+    if (s4.auto.includes(null) || s4.mean.includes(null)) { playSound('wrong'); showExplanationModal('모든 형태소의 자립성과 의미 성격을 골라 주세요.'); return; }
+    let wa = 0, wm = 0;
+    S.morphs.forEach((m, i) => { if (s4.auto[i] === m.auto) s4.okA.add(i); else { s4.badA.add(i); wa++; } if (s4.mean[i] === m.mean) s4.okM.add(i); else { s4.badM.add(i); wm++; } });
+    if (!wa && !wm) { playSound('correct'); s4.done = true; sRenderApp(); return; }
+    sMarkWrong(); sRenderApp();
+    const tips = [];
+    if (wa) tips.push(`[자립성 ${wa}개] 체언·관형사·부사·의존 명사('채')는 자립, 어간·어미·조사·접사는 의존이에요. 조사는 단어이지만 형태소로는 의존입니다.`);
+    if (wm) tips.push(`[의미 ${wm}개] 체언·용언 어간·관형사·부사는 실질, 조사·어미·접사(피동·사동 접미사 포함)는 형식이에요.`);
+    showExplanationModal(tips.join('\n\n'));
+}
+window.s4Next = () => { sPhase = 5; sRenderPhaseBar(); sRenderApp(); };
+
+/* ---- 5단계: 시제 · 피동/사동 ---- */
+function sRender5() {
+    const preds = S.words.map((w, i) => ({ w, i })).filter(x => x.w.hasStem);
+    const opt = (sel, label, onclick, bad, ok) => `<button ${ok ? 'disabled' : ''} onclick="${onclick}" class="pick ${ok && sel === label ? 'ok' : bad && sel === label ? 'bad' : sel === label ? 'on' : ''} flex-1 px-2 py-2.5 rounded-lg text-xs font-bold border border-slate-600 bg-slate-800 text-slate-200">${label}</button>`;
+    let body = `<div class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2"><div class="text-xs font-bold text-slate-300">이 문장의 시제는?</div><div class="flex gap-2">${['과거', '현재', '미래'].map(t => opt(s5.tense, t, `s5Tense('${t}')`, s5.badT, s5.done)).join('')}</div></div>`;
+    preds.forEach(({ w, i }) => {
+        body += `<div class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2"><div class="text-xs font-bold text-slate-300">서술어 <span class="text-amber-300 text-base font-black">${w.text}</span> 는?</div><div class="flex gap-2">${['피동', '사동', '해당 없음'].map(v => opt(s5.voice[i], v, `s5Voice(${i},'${v}')`, s5.badV.has(i), s5.done)).join('')}</div></div>`;
+    });
+    body += s5.done ? `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-xs text-emerald-200">${S.why}</div>` + primaryBtn('s5Next()', '다음 단계 (단어 형성)') : primaryBtn('s5Validate()', '시제·피동·사동 검증');
+    return card("5단계: 시제와 피동·사동", "fa-clock", "선어말 어미로 시제를, 접미사로 피동·사동을 판단하세요.", body);
+}
+window.s5Tense = t => { if (s5.done) return; s5.tense = t; s5.badT = false; playSound('click'); sRenderApp(); };
+window.s5Voice = (i, v) => { if (s5.done) return; s5.voice[i] = v; s5.badV.delete(i); playSound('click'); sRenderApp(); };
+function s5Validate() {
+    const preds = S.words.map((w, i) => ({ w, i })).filter(x => x.w.hasStem);
+    if (!s5.tense || preds.some(x => !s5.voice[x.i])) { playSound('wrong'); showExplanationModal('시제와 서술어의 피동·사동 여부를 모두 골라 주세요.'); return; }
+    const msgs = [];
+    if (s5.tense !== S.tense) { s5.badT = true; msgs.push(`시제: ${S.tense}입니다. ${S.why}`); }
+    preds.forEach(({ w, i }) => { if (s5.voice[i] !== w.voice) { s5.badV.add(i); const sfx = w.morphs.find(m => m.cat === '피동 접미사' || m.cat === '사동 접미사'); msgs.push(`'${w.text}': ${w.voice}${sfx ? ` — ${sfx.cat} ${iGa(sfx.form)} 들어 있습니다 (${sfx.gloss}).` : ' — 피동·사동 접미사가 없는 보통 서술어입니다.'}`); } });
+    if (!msgs.length) { playSound('correct'); s5.done = true; sRenderApp(); return; }
+    sMarkWrong(); sRenderApp(); showExplanationModal(msgs.join('\n\n'));
+}
+window.s5Next = () => { sPhase = 6; sRenderPhaseBar(); sRenderApp(); };
+
+/* ---- 6단계: 복합어 고르기 → 각 복합어 형성 트리 ---- */
+function contentWords() { return S.words.map((w, i) => ({ w, i })).filter(x => !x.w.isJosa); }
+function sRender6() {
+    if (s6.cur) return sRender6Tree();
+    const cw = contentWords();
+    let body = `<div class="w-full flex flex-wrap justify-center gap-2">${cw.map(({ w, i }) => `<button ${s6.ok ? 'disabled' : ''} onclick="s6Toggle(${i})" class="pick ${s6.ok ? (w.comp ? 'ok' : '') : s6.picked.has(i) ? 'on' : ''} px-4 py-2.5 rounded-xl text-sm font-black border border-slate-600 bg-slate-800 text-slate-200">${w.text}</button>`).join('')}</div>`;
+    if (s6.ok) {
+        const remaining = s6.queue.length;
+        body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-xs text-emerald-200 text-center">복합어 ${cw.filter(x => x.w.comp).length}개${s6.done.length ? ` · 분석 완료: ${s6.done.join(', ')}` : ''}</div>` + (remaining ? primaryBtn('s6StartTree()', `'${S.words[s6.queue[0].wi].text}' 형성 방법 분류하기`) : primaryBtn('sFinish()', '문장 분석 완료'));
+    } else body += primaryBtn('s6Validate()', '복합어 선택 검증') + `<p class="hint text-[11px] text-slate-500 text-center">어근이 둘 이상이거나 접사가 붙은 단어(합성어·파생어)를 모두 고르세요. 어간에 어미만 붙은 말(먹었다, 이른)은 단일어입니다. 조사는 뺐습니다.</p>`;
+    return card("6단계: 단어 형성", "fa-sitemap", "이 문장의 단어 중 복합어(합성어·파생어)를 모두 고르세요.", body);
+}
+window.s6Toggle = i => { if (s6.ok || i < 0) return; s6.picked.has(i) ? s6.picked.delete(i) : s6.picked.add(i); playSound('click'); sRenderApp(); };
+function s6Validate() {
+    const cw = contentWords();
+    const exp = new Set(cw.filter(x => x.w.comp).map(x => x.i));
+    if (sameSet(s6.picked, exp)) { playSound('correct'); s6.ok = true; s6.queue = cw.filter(x => x.w.comp).map(x => ({ wi: x.i, recipe: x.w.comp })); sRenderApp(); return; }
+    sMarkWrong();
+    const missed = [...exp].filter(i => !s6.picked.has(i)).map(i => `${eunNeun(S.words[i].text)} 복합어입니다 (기본형 ${S.words[i].comp})`);
+    const extra = [...s6.picked].filter(i => !exp.has(i)).map(i => { const w = S.words[i]; return `${eunNeun(w.text)} 단일어입니다 — 어근 '${w.morphs.filter(m => SCAT[m.cat].kind === '어근').map(m => m.form).join(', ') || w.morphs[0].form}' 하나에 ${w.morphs.length > 1 ? '어미만 붙은 것' : '해당'}`; });
+    showExplanationModal([...missed, ...extra].join('\n\n'));
+}
+window.s6StartTree = () => { const q = s6.queue.shift(); s6.cur = { ...q, sub: WordEngine.byWord(q.recipe), path: [] }; sRenderApp(); };
+function sRender6Tree() {
+    const c = s6.cur, sub = c.sub, steps = treeSteps(c.path);
+    let tree = `<div class="text-center text-sm text-slate-300 mb-2">'${S.words[c.wi].text}' ← 기본형 <b class="text-amber-300">${sub.word}</b> = ${sub.morphemes.map(m => m.form).join(' + ')}</div><div class="w-full flex flex-col items-center space-y-1">`;
+    steps.forEach((st, lv) => {
+        const confirmed = lv < c.path.length, current = lv === c.path.length;
+        if (!confirmed && !current) return;
+        if (lv > 0) tree += `<div class="w-1 h-5 bg-indigo-600 rounded-full my-1"></div>`;
+        tree += `<div class="w-full bg-slate-950 border ${confirmed ? 'border-emerald-500/60' : 'border-indigo-500/60'} p-3 rounded-xl flex flex-col items-center space-y-2"><div class="text-[11px] font-bold text-slate-400">${st.title}</div><div class="flex flex-wrap gap-2 justify-center">`;
+        st.options.forEach((opt, k) => { if (confirmed) { if (c.path[lv] === opt) tree += `<div class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2"><i class="fa-solid fa-circle-check"></i> ${opt}</div>`; } else tree += `<button onclick="s6Pick(${lv},${k})" class="bg-slate-800 hover:bg-indigo-600 border border-slate-600 text-slate-100 hover:text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md transition">${opt}</button>`; });
+        tree += `</div></div>`;
+    });
+    tree += `</div>`;
+    return card("6단계: 형성 방법 분류", "fa-sitemap", "이 단어가 어떻게 만들어졌는지 분류하세요.", tree);
+}
+window.s6Pick = (lv, k) => {
+    const c = s6.cur, sub = c.sub, choice = treeSteps(c.path)[lv].options[k];
+    if (choice === sub.treeAnswers[lv]) {
+        playSound('correct'); c.path.push(choice);
+        if (c.path.length === sub.treeAnswers.length) { s6.done.push(`${sub.word}(${sub.treeAnswers[sub.treeAnswers.length - 1]})`); s6.cur = null; }
+        sRenderApp();
+    } else { sMarkWrong(); showExplanationModal(WordEngine.explain(sub, choice)); }
+};
+
+/* ---- 완료 ---- */
+function sFinish() {
+    sPhase = 7;
+    let pts = sRevealed ? 0 : Math.max(5, 20 - 2 * sWrong);
+    sPoints = pts;
+    stats.score += pts; stats.words += 1; stats.wrong += sWrong;
+    stats.streak = (sWrong === 0 && !sRevealed) ? stats.streak + 1 : 0;
+    stats.best = Math.max(stats.best, stats.streak);
+    saveStats(); submitScore();
+    sRenderPhaseBar(); sRenderApp(); playSound('complete'); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function sRenderResult() {
+    const body = `
+        <div class="flex items-center justify-between bg-indigo-950/40 border border-indigo-500/40 rounded-xl px-4 py-2 w-full"><span class="text-xs text-slate-300">이 문장 점수 <span class="text-[10px] text-slate-500">(오답 ${sWrong}번${sRevealed ? ' · 정답 보기 사용' : ''})</span></span><span class="text-xl font-black text-indigo-300">+${sPoints}점</span><span class="text-xs text-slate-400">누적 ${stats.score}점</span></div>
+        <div class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2 text-xs">
+            <div><b class="text-slate-300">어절 ${S.eojeols.length}</b> → <b class="text-slate-300">단어 ${S.words.length}</b> → <b class="text-slate-300">형태소 ${S.morphs.length}</b> (자립 ${S.counts.auto} · 의존 ${S.counts.dep} / 실질 ${S.counts.real} · 형식 ${S.counts.form})</div>
+            <div class="flex flex-wrap gap-1">${S.eojeols.map(e => `<span class="inline-flex flex-wrap items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1">${e.words.map(w => `<span class="${w.isJosa ? 'text-sky-300' : 'text-slate-100'} font-bold">${w.text}</span>`).join('<span class="text-slate-600">+</span>')}</span>`).join('')}</div>
+            <div class="text-slate-400">시제: <b class="text-emerald-300">${S.tense}</b> · ${S.why}</div>
+            ${S.words.filter(w => w.hasStem).map(w => `<div class="text-slate-400">'${w.text}': ${w.voice}${w.comp ? ` · 기본형 ${w.comp}` : ''}</div>`).join('')}
+        </div>
+        <div class="w-full overflow-x-auto"><table class="w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-slate-400"><th class="text-left px-2">형태소</th><th class="px-2">종류</th><th class="px-2">자립성</th><th class="px-2">의미</th><th class="text-left px-2">기능</th></tr></thead><tbody>${S.morphs.map(m => `<tr class="bg-slate-950"><td class="px-2 py-1 font-black text-amber-300">${m.form}</td><td class="px-2 text-center">${m.cat}</td><td class="px-2 text-center">${m.auto}</td><td class="px-2 text-center">${m.mean}</td><td class="px-2 text-slate-400">${m.gloss}</td></tr>`).join('')}</tbody></table></div>
+        <div class="w-full flex gap-2"><button onclick="loadSentence(sIdx)" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-sm border border-slate-600"><i class="fa-solid fa-rotate-right"></i> 다시 풀기</button><button onclick="sNext()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg"><i class="fa-solid fa-arrow-right"></i> 다음 문장 <kbd class="ml-1 text-[10px] bg-emerald-800/60 px-1.5 py-0.5 rounded">Enter</kbd></button></div>`;
+    return card("문장 분석 요약", "fa-circle-check", "어절·단어·형태소, 시제와 피동·사동, 단어 형성까지 한눈에.", body, 'max-w-3xl');
+}
+
+/* ---- 정답 보기 (문장 모드) ---- */
+function sReveal() {
+    sRevealed = true; sMarkWrong(); sWrong--;   // 소리만, 오답 수는 안 늘림
+    let text = '';
+    if (sPhase === 1) { S.eojeols.forEach((e, ei) => { s1.cuts[ei] = expectedCuts(e.words); s1.bad.delete(ei); }); text = S.eojeols.map(e => `'${e.text}' → ${e.words.map(w => w.text).join(' + ')}`).join('\n'); }
+    else if (sPhase === 2) { if (s2.cur) { text = `'${s2.cur.chunk.text}' = ${s2.cur.correct}`; s2Advance(); } else { S.words.forEach((w, wi) => { s2.cuts[wi] = expectedCuts(w.chunks); let st = 0; s2.fused[wi] = new Set(); w.chunks.forEach(c => { if (c.morphs.length > 1) s2.fused[wi].add(st); st += c.text.length; }); s2.bad.delete(wi); }); text = S.words.map(w => `'${w.text}' → ${w.chunks.map(c => c.text).join(' | ')}`).join('\n') + '\n\n검증 버튼을 누르세요.'; } }
+    else if (sPhase === 3) { S.morphs.forEach((m, i) => { s3.assigned[i] = m.cat; s3.ok.add(i); s3.bad.delete(i); }); text = S.morphs.map(m => `'${m.form}' → ${m.cat}`).join('\n') + '\n\n검증 버튼을 누르세요.'; }
+    else if (sPhase === 4) { S.morphs.forEach((m, i) => { s4.auto[i] = m.auto; s4.mean[i] = m.mean; s4.okA.add(i); s4.okM.add(i); }); text = `자립 ${S.counts.auto} · 의존 ${S.counts.dep} / 실질 ${S.counts.real} · 형식 ${S.counts.form}\n\n검증 버튼을 누르세요.`; }
+    else if (sPhase === 5) { s5.tense = S.tense; S.words.forEach((w, i) => { if (w.hasStem) s5.voice[i] = w.voice; }); text = `시제: ${S.tense}\n` + S.words.filter(w => w.hasStem).map(w => `'${w.text}': ${w.voice}`).join('\n') + '\n\n검증 버튼을 누르세요.'; }
+    else if (sPhase === 6) { if (s6.cur) { const sub = s6.cur.sub, ans = sub.treeAnswers[s6.cur.path.length]; text = `정답: ${ans}`; window.s6Pick(s6.cur.path.length, treeSteps(s6.cur.path)[s6.cur.path.length].options.indexOf(ans)); return showAnswerModal(text); } else { s6.picked = new Set(contentWords().filter(x => x.w.comp).map(x => x.i)); text = '복합어: ' + (contentWords().filter(x => x.w.comp).map(x => x.w.text).join(', ') || '없음') + '\n\n검증 버튼을 누르세요.'; } }
+    else return;
+    sRenderApp(); showAnswerModal(text);
+}
+
+/* ---- 모드 전환·훅 ---- */
+function enterSentenceMode() {
+    appMode = 'sentence'; tutorial = false; playSound('correct');
+    document.getElementById('start-screen').classList.add('hidden');
+    ['phase-bar', 'app-container', 'control-bar'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+    document.getElementById('filter-selector').classList.add('hidden'); document.getElementById('mode-selector').classList.add('hidden');
+    const sel = document.getElementById('word-selector'); sel.onchange = () => loadSentence(parseInt(sel.value));
+    loadSentence(Math.floor(Math.random() * SPROBLEMS.length));
+}
+function enterWordMode() {
+    appMode = 'word';
+    document.getElementById('filter-selector').classList.remove('hidden'); document.getElementById('mode-selector').classList.remove('hidden');
+    const sel = document.getElementById('word-selector'); sel.onchange = () => loadWord(parseInt(sel.value));
+}
+const _startWith = startWith; startWith = function (f) { enterWordMode(); _startWith(f); };
+const _startTutorial = startTutorial; startTutorial = function () { enterWordMode(); _startTutorial(); };
+const _showStart = showStart; showStart = function () { appMode = 'word'; enterWordMode(); _showStart(); };
+const _nextWord = nextWord; nextWord = function () { if (appMode === 'sentence') return sNext(); _nextWord(); };
+const _prevWord = prevWord; prevWord = function () { if (appMode === 'sentence') return sPrev(); _prevWord(); };
+const _resetCurrentPuzzle = resetCurrentPuzzle; resetCurrentPuzzle = function () { if (appMode === 'sentence') return loadSentence(sIdx); _resetCurrentPuzzle(); };
+const _revealAnswer = revealAnswer; revealAnswer = function () { if (appMode === 'sentence') return sReveal(); _revealAnswer(); };
+const _renderStart = renderStart; renderStart = function () {
+    _renderStart();
+    const btn = document.querySelector('#start-screen [onclick="startWith(\'all\')"]');
+    if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-cube"></i> 단어 연습';
+        btn.insertAdjacentHTML('afterend', `<button onclick="enterSentenceMode()" class="w-full max-w-xs -mt-4 py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-lg shadow-xl shadow-purple-600/40 transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3"><i class="fa-solid fa-align-left"></i> 문장 연습 <span class="text-xs font-medium opacity-80">${SPROBLEMS.length}문장</span></button>`);
+    }
+};
+document.addEventListener('keydown', e => {
+    if (appMode !== 'sentence') return;
+    if (e.target && ['SELECT', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.key !== 'Enter') return;
+    const anyModal = ['explanation-modal', 'guide-modal', 'theme-modal', 'rank-modal'].some(id => !document.getElementById(id).classList.contains('hidden'));
+    if (anyModal || !document.getElementById('start-screen').classList.contains('hidden')) return;
+    if (sPhase === 1) s1Validate(); else if (sPhase === 2 && !s2.cur) s2Validate(); else if (sPhase === 3) s3Validate(); else if (sPhase === 4) { s4.done ? s4Next() : s4Validate(); } else if (sPhase === 5) { s5.done ? s5Next() : s5Validate(); } else if (sPhase === 6 && !s6.cur) { s6.ok ? (s6.queue.length ? s6StartTree() : sFinish()) : s6Validate(); } else if (sPhase === 7) sNext();
+});
+(function initSentences() {
+    const errs = sentenceSelfCheck();
+    if (errs.length) { console.error('문장 오류', errs); const w = document.getElementById('engine-warning'); w.classList.remove('hidden'); w.innerHTML += `<b>문장 뱅크 검증 실패 (${errs.length}건)</b><br>${errs.join('<br>')}`; }
+    SPROBLEMS = SENTENCES.filter(sp => { try { buildSentence(sp); return true; } catch (e) { return false; } }).map(buildSentence);
+    renderStart();
+})();
+
 </script>
 </body>
 </html>
