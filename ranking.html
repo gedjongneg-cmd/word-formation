@@ -42,7 +42,7 @@ async function load() {
   try {
     const res = await fetch(RANK_API + '?limit=200&t=' + Date.now());
     const data = await res.json();
-    const rows = (data.rows || []).slice().sort((a, b) => b.score - a.score || a.words - b.words);
+    const rows = (data.rows || []).filter(r => r.words > 0).sort((a, b) => b.score - a.score || a.words - b.words);
     meta.textContent = `전체 ${rows.length}명 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준`;
     if (!rows.length) { board.innerHTML = '<div class="empty">아직 기록이 없습니다. 첫 단어를 풀면 올라갑니다.</div>'; return; }
     board.innerHTML = `<table><thead><tr><th>순위</th><th>이름</th><th class="num">총점</th><th class="num">단어</th><th class="num">오답</th><th class="num">최고 연속</th></tr></thead><tbody>` +
