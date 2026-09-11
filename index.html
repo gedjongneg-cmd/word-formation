@@ -125,9 +125,25 @@
                     <option value="접두 파생어">접두 파생어</option>
                     <option value="접미 파생어">접미 파생어</option>
                 </select>
+                <select id="sfilter-selector" onchange="onSFilterChange(this.value)" class="hidden bg-slate-800 text-slate-200 border border-slate-700 text-xs rounded-lg px-2 py-2 sm:py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer min-w-0" title="문장 종류 고르기">
+                    <option value="all">모든 문장</option>
+                    <option value="exam">★ 기출 단골</option>
+                    <option value="poem">📖 시 문장</option>
+                    <option value="홑">홑문장</option>
+                    <option value="안은">안은문장</option>
+                    <option value="이어진">이어진문장</option>
+                    <option value="vc">피동·사동</option>
+                    <option value="hon">높임 표현</option>
+                    <option value="neg">부정 표현</option>
+                    <option value="quo">인용 표현</option>
+                    <option value="asp">동작상</option>
+                    <option value="end">의문·명령·청유·감탄</option>
+                </select>
+                <button id="btn-phases" onclick="openPhaseModal()" class="hidden px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap" title="풀 단계 고르기"><i class="fa-solid fa-list-check sm:mr-1"></i><span class="hidden sm:inline">단계 선택</span></button>
                 <select id="word-selector" onchange="loadWord(parseInt(this.value))" class="bg-slate-800 text-slate-200 border border-slate-700 text-xs sm:text-sm rounded-lg px-2 sm:px-3 py-2 sm:py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer min-w-0 sm:max-w-[190px]"></select>
             </div>
             <div class="grid grid-cols-5 sm:flex items-center gap-1.5 sm:gap-2">
+                <button id="btn-auto" onclick="toggleAuto()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap"></button>
                 <button id="btn-hints" onclick="toggleHints()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap" title="도움말 문구 켜기/끄기"><i class="fa-solid fa-lightbulb md:mr-1"></i><span class="hidden md:inline"> 도움말</span></button>
                 <button onclick="revealAnswer()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded-lg text-xs font-medium border border-amber-500/40 transition flex items-center justify-center whitespace-nowrap" title="현재 단계 정답을 보여 줍니다"><i class="fa-solid fa-key md:mr-1"></i><span class="hidden md:inline"> 정답</span></button>
                 <button onclick="prevWord()" class="px-2 sm:px-3 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center justify-center whitespace-nowrap" title="이전 단어"><i class="fa-solid fa-chevron-left md:mr-1"></i><span class="hidden md:inline"> 이전</span></button>
@@ -181,6 +197,20 @@
         </div>
     </div>
 
+    <div id="block-sheet" class="fixed inset-x-0 bottom-0 z-40 hidden">
+        <div class="mx-auto max-w-lg bg-slate-900 border-t-2 border-x border-indigo-500/60 rounded-t-2xl shadow-2xl max-h-[70vh] flex flex-col">
+            <div class="px-4 py-2 border-b border-slate-800 flex items-center justify-between"><div id="block-sheet-title" class="text-sm font-black text-amber-300"></div><button onclick="closeBlockSheet()" class="text-slate-400 hover:text-slate-200 text-xl leading-none px-2">×</button></div>
+            <div id="block-sheet-body" class="p-3 overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+    <div id="phase-modal" onclick="if(event.target===this)closePhaseModal()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3">
+            <h3 class="font-bold text-slate-100 text-base"><i class="fa-solid fa-list-check text-indigo-400 mr-2"></i>풀 단계 고르기</h3>
+            <p class="text-xs text-slate-400">고른 단계만 차례로 풉니다. 건너뛴 단계만큼 점수도 줄어듭니다(8단계 모두 = 20점).</p>
+            <div id="phase-modal-list" class="grid grid-cols-2 gap-2"></div>
+            <div class="flex gap-2"><button onclick="setPhasesAll(true)" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold border border-slate-700">모두 켜기</button><button onclick="applyPhaseModal()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">적용</button></div>
+        </div>
+    </div>
     <div id="rank-modal" onclick="if(event.target===this)closeRanking()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -1231,6 +1261,7 @@ const RECIPES = [
     V("바라보다", "바로 향하여 보다", ["바라-", "-아", "보-"], { ...종속("'바라(향하여) 보다'로, 앞부분이 '보다'의 방식을 한정합니다."), chunks: [{ text: "바라", m: ["바라-", "-아"] }, { text: "보", m: ["보-"] }] }),
     N("잔돌", "자잘한 돌", ["잘-/형", "-ㄴ", "돌"], { ...종속("'잔(자잘한) 돌'로, 앞부분 '잔'이 '돌'을 꾸며 줍니다."), chunks: [{ text: "잔", m: ["잘-/형", "-ㄴ"] }, { text: "돌", m: ["돌"] }] }),
     N("한계령쯤", "한계령 정도", ["한계령/고유", "-쯤"], { hidden: true }),
+    V("열리다", "열림을 당하다", ["열-", "-리-/피"], { hidden: true }),
 ];
 
 /* =====================================================================
@@ -1533,6 +1564,7 @@ function prevWord() { const pool = getPool(); loadWord(pool[(pool.indexOf(curren
 function resetCurrentPuzzle() { loadWord(currentIdx); }
 
 function loadWord(index) {
+    clearTimeout(_autoTimer); closeBlockSheet();
     currentIdx = index; P = PROBLEMS[currentIdx]; currentPhase = 1;
     cutDone = new Set(); pendingCut = null; innerNode = null;
     p2 = { assigned: new Array(P.morphemes.length).fill(null), active: 0, ok: new Set(), bad: new Set() };
@@ -1575,9 +1607,31 @@ function renderApp() {
     html += currentPhase === 1 ? renderPhase1() : currentPhase === 2 ? renderPhase2() : currentPhase === 3 ? renderPhase3() : currentPhase === 4 ? renderPhase4() : renderResult();
     document.getElementById('app-container').innerHTML = html;
 }
+/* ---- 휴대폰용 블록 선택창: 슬롯을 누르면 아래에서 올라옴 ---- */
+const isMobile = () => window.innerWidth < 640;
+let sheetOpen = false;
+function openBlockSheet() {
+    const word = appMode !== 'sentence';
+    const idx = word ? p2.active : s3.active;
+    if (idx === null || idx === undefined) { closeBlockSheet(); return; }
+    const mm = word ? P.morphemes[idx] : S.morphs[idx];
+    const groups = word ? WORD_GROUPS : SCAT_GROUPS, cats = word ? WCATS : SCATS, fn = word ? 'assignCat' : 's3Assign';
+    document.getElementById('block-sheet-title').innerHTML = `<span class="text-[11px] text-slate-400 font-medium mr-2">이 형태소는?</span>${stripHyphen(mm.form)}`;
+    document.getElementById('block-sheet-body').innerHTML = groups.map(g => `<div><div class="text-[10px] font-bold text-slate-500 mb-1">${g.title}</div><div class="flex flex-wrap gap-1.5">${g.cats.map(c => `<button onclick="${fn}(${cats.indexOf(c)})" class="block-chip bg-slate-800 border border-slate-600 text-slate-100 px-3 rounded-xl text-xs font-bold" style="min-height:42px">${c}</button>`).join('')}</div></div>`).join('');
+    document.getElementById('block-sheet').classList.remove('hidden'); sheetOpen = true;
+}
+function closeBlockSheet() { document.getElementById('block-sheet').classList.add('hidden'); sheetOpen = false; }
+function refreshBlockSheet() { if (!sheetOpen) return; const idx = appMode !== 'sentence' ? p2.active : s3.active; if (idx === null || idx === undefined) closeBlockSheet(); else openBlockSheet(); }
+let inlineNote = null;   // 오답 설명을 모달 대신 카드 안에 띄움
+function inlineNoteHtml() {
+    if (!inlineNote) return '';
+    return `<div id="inline-note" class="w-full bg-rose-950/60 border-2 border-rose-500/60 rounded-xl p-3 text-xs sm:text-sm text-rose-100 shadow-lg"><div class="flex items-start justify-between gap-2"><div class="font-black text-rose-300"><i class="fa-solid fa-circle-xmark mr-1"></i> 다시 생각해 볼까요?</div><button onclick="inlineNote = null; (appMode === 'sentence' ? sRenderApp : renderApp)();" class="text-rose-300/80 hover:text-white text-base leading-none px-1" title="닫기">×</button></div><div class="mt-1.5 whitespace-pre-line leading-relaxed">${inlineNote.text.replace(/[<>]/g, ch => ch === '<' ? '&lt;' : '&gt;')}</div></div>`;
+}
+document.addEventListener('click', e => { if (inlineNote && !e.target.closest('#inline-note')) inlineNote = null; }, true);
+window.addEventListener('resize', () => { if (!isMobile()) closeBlockSheet(); });
 function card(title, icon, sub, body, maxW = 'max-w-2xl') {
     return `<div class="w-full ${maxW} bg-slate-900/90 border-2 border-indigo-500/60 p-3 sm:p-6 rounded-2xl shadow-2xl flex flex-col items-center space-y-4 sm:space-y-5">
-        <div class="text-center"><h3 class="text-base font-bold text-indigo-300 flex items-center justify-center gap-2"><i class="fa-solid ${icon}"></i> ${title}</h3><p class="text-xs text-slate-400 mt-1">${sub}</p></div>${body}</div>`;
+        <div class="text-center"><h3 class="text-base font-bold text-indigo-300 flex items-center justify-center gap-2"><i class="fa-solid ${icon}"></i> ${title}</h3><p class="text-xs text-slate-400 mt-1">${sub}</p></div>${inlineNoteHtml()}${body}</div>`;
 }
 const primaryBtn = (fn, label) => `<button onclick="${fn}" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-check-double"></i> ${label}</button>`;
 
@@ -1733,26 +1787,27 @@ function renderPhase2() {
             </div></div>`;
     });
     slots += `</div>`;
-    const bank = `<div class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+    const bank = `<button onclick="if(p2.active===null){p2.active=p2.assigned.findIndex((v,j)=>v===null&&!p2.ok.has(j));} openBlockSheet();" class="sm:hidden w-full py-3 bg-indigo-600/90 text-white rounded-xl text-sm font-bold"><i class="fa-solid fa-cubes mr-1"></i> 블록 고르기</button><div class="hidden sm:block w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
             <div class="text-xs font-bold text-slate-400 mb-2.5 flex items-center gap-1"><i class="fa-solid fa-cubes"></i> 품사·문법 요소 블록 (선택된 슬롯에 들어갑니다):</div>
             <div class="space-y-2">${WORD_GROUPS.map(g => `<div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] font-bold text-slate-500 w-14 shrink-0 text-right pr-1">${g.title}</span>${g.cats.map(c => `<button onclick="assignCat(${WCATS.indexOf(c)})" class="block-chip bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 border border-slate-600 text-slate-100 hover:text-white px-2.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md transition">${c}</button>`).join('')}</div>`).join('')}</div>
         </div>` + primaryBtn('validatePhase2()', '형태소 종류 검증');
     return card("PHASE 2: 형태소 종류 🧩 배치", "fa-puzzle-piece", "각 형태소가 어떤 품사 또는 문법 요소인지 블록을 골라 채우세요. 슬롯을 누르면 그 자리를 다시 고를 수 있습니다.", slots + bank);
 }
-function selectSlot(i) { if (p2.ok.has(i)) return; if (p2.assigned[i] !== null) { p2.assigned[i] = null; p2.bad.delete(i); } p2.active = i; playSound('click'); renderApp(); }
+function selectSlot(i) { if (p2.ok.has(i)) return; if (p2.assigned[i] !== null) { p2.assigned[i] = null; p2.bad.delete(i); } p2.active = i; playSound('click'); renderApp(); if (isMobile()) openBlockSheet(); }
 function assignCat(k) {
     let i = p2.active;
     if (i === null || i >= P.morphemes.length || p2.ok.has(i)) { i = p2.assigned.findIndex((v, j) => v === null && !p2.ok.has(j)); if (i === -1) return; }
     p2.assigned[i] = WCATS[k]; p2.bad.delete(i);
     const next = p2.assigned.findIndex((v, j) => v === null && !p2.ok.has(j));
     p2.active = next === -1 ? null : next;
-    playSound('click'); renderApp();
+    playSound('click'); renderApp(); refreshBlockSheet();
+    if (!p2.assigned.includes(null)) autoLater(validatePhase2);
 }
 function validatePhase2() {
     if (p2.assigned.includes(null)) { playSound('wrong'); showExplanationModal("모든 형태소에 종류 블록을 배치해 주세요."); return; }
     const wrong = [];
     P.morphemes.forEach((m, i) => { if (p2.assigned[i] === m.fine) p2.ok.add(i); else { p2.bad.add(i); wrong.push(i); } });
-    if (!wrong.length) { playSound('correct'); currentPhase = 3; renderPhaseBar(); renderApp(); return; }
+    if (!wrong.length) { playSound('correct'); closeBlockSheet(); currentPhase = 3; renderPhaseBar(); renderApp(); return; }
     markWrong(); p2.active = wrong[0]; renderApp();
     showExplanationModal(`빨간 슬롯 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(i => { const m = P.morphemes[i], c = p2.assigned[i]; return `• '${m.form}' → ${c}?  ${fineTest(c, m.text)}`; }).join('\n\n'));
 }
@@ -1775,6 +1830,7 @@ function pickProp(kind, i, label) {
     if (kind === 'auto') { if (p3.okAuto.has(i)) return; p3.auto[i] = label; p3.badAuto.delete(i); }
     else { if (p3.okMean.has(i)) return; p3.mean[i] = label; p3.badMean.delete(i); }
     playSound('click'); renderApp();
+    if (!p3.auto.includes(null) && !p3.mean.includes(null)) autoLater(validatePhase3);
 }
 function validatePhase3() {
     if (p3.auto.includes(null) || p3.mean.includes(null)) { playSound('wrong'); showExplanationModal("모든 형태소의 자립성과 의미 성격을 골라 주세요."); return; }
@@ -1959,7 +2015,10 @@ function renderResult() {
 /* =====================================================================
    8. 모달 · 가이드
    ===================================================================== */
-function showExplanationModal(text) { const m = document.getElementById('explanation-modal'); m.querySelector('h3').innerText = '다시 생각해 볼까요?'; m.querySelector('h3').nextElementSibling.innerText = '선택이 문법 규칙과 맞지 않습니다.'; document.getElementById('modal-explanation-text').innerText = text; m.classList.remove('hidden'); }
+function showExplanationModal(text) {
+    const inApp = document.getElementById('start-screen').classList.contains('hidden') && !document.getElementById('app-container').classList.contains('hidden');
+    if (inApp) { inlineNote = { text: String(text) }; (appMode === 'sentence' ? sRenderApp : renderApp)(); const el = document.getElementById('inline-note'); if (el) { const r = el.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } return; }
+    const m = document.getElementById('explanation-modal'); m.querySelector('h3').innerText = '다시 생각해 볼까요?'; m.querySelector('h3').nextElementSibling.innerText = '선택이 문법 규칙과 맞지 않습니다.'; document.getElementById('modal-explanation-text').innerText = text; m.classList.remove('hidden'); }
 function closeExplanationModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
 function openGuide() { document.getElementById('guide-modal').classList.remove('hidden'); }
 function closeGuide() { document.getElementById('guide-modal').classList.add('hidden'); }
@@ -2019,13 +2078,14 @@ const START_MENU = [
 function renderStart() {
     const examCount = PROBLEMS.filter(p => p.exam).length;
     const nameBlock = userName
-        ? `<div class="text-sm text-slate-300"><b class="text-slate-100">${userName}</b>님, 반가워요 <button onclick="changeName()" class="ml-2 text-[11px] text-slate-500 hover:text-slate-300 underline">이름 바꾸기</button></div>
+        ? `<div class="text-sm text-slate-300"><b class="text-slate-100">${userName}</b>${userCls ? ` <span class="text-[11px] text-slate-400">(${userCls})</span>` : ''}님, 반가워요 <button onclick="changeCls()" class="ml-2 text-[11px] text-slate-500 hover:text-slate-300 underline">${userCls ? '반 바꾸기' : '반 입력'}</button> <button onclick="changeName()" class="ml-2 text-[11px] text-slate-500 hover:text-slate-300 underline">이름 바꾸기</button></div>
            <button onclick="startWith('all')" class="w-full max-w-xs py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/40 transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3"><i class="fa-solid fa-play"></i> 시작하기</button>
            <button onclick="startTutorial()" class="w-full max-w-xs -mt-4 py-3 ${tutorialDone ? 'bg-slate-900 border border-slate-700 text-slate-300' : 'bg-amber-500/15 border-2 border-amber-500/70 text-amber-200 glow-active'} hover:bg-amber-500/25 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fa-solid fa-graduation-cap"></i> ${tutorialDone ? '튜토리얼 다시 보기' : '튜토리얼 (콩나물밥으로 배우기)'}</button>
            <div class="w-full max-w-xs -mt-2">${myRecordHtml()}<button onclick="openRanking()" class="mt-2 w-full py-2.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 rounded-xl text-sm font-bold text-amber-300"><i class="fa-solid fa-ranking-star mr-1"></i> 랭킹 보기</button></div>`
         : `<div class="w-full max-w-xs bg-slate-900/90 border-2 border-indigo-500/50 rounded-2xl p-5 space-y-3">
                <label for="name-input" class="block text-sm font-bold text-slate-200 text-center">이름을 적어 주세요</label>
                <input id="name-input" maxlength="12" placeholder="예: 홍길동" onkeydown="if(event.key==='Enter'){event.preventDefault();submitName();}" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 text-slate-100 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" autocomplete="off">
+               <input id="cls-input" maxlength="10" placeholder="반 (선택, 예: 2-3)" onkeydown="if(event.key==='Enter'){event.preventDefault();submitName();}" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                <button onclick="submitName()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-base shadow-lg transition"><i class="fa-solid fa-play mr-1"></i> 시작</button>
                <p id="name-msg" class="text-[11px] text-slate-500 text-center">이름을 적으면 바로 튜토리얼이 시작돼요. 랭킹에 쓰이니 다른 사람과 겹치지 않는 이름으로!</p>
            </div>`;
@@ -2074,10 +2134,10 @@ function startWith(filter) {
 const THEMES = {
     neon:  { name: '네온 다크', desc: '어두운 배경에 남색·보라 강조', swatch: ['#0b0f19', '#1e1b4b', '#6366f1', '#f1f5f9'], dark: true },
     paper: { name: '종이 노트', desc: '기본 테마. 밝은 종이색 배경으로 눈이 편함', swatch: ['#f4efe4', '#fbf8f1', '#4f46e5', '#1e1913'], dark: false,
-        slate: { bg: { 950: '#f4efe4', 900: '#fbf8f1', 800: '#efe8da', 700: '#e2d9c6' }, border: { 800: '#e4dccb', 700: '#d6ccb6', 600: '#c2b69c' }, text: { 100: '#1e1913', 200: '#2a241b', 300: '#463f33', 400: '#665e4f', 500: '#857c6b', 600: '#a09786', 900: '#1e1913' } },
-        vars: { '--bg': '#f4efe4', '--fg': '#1e1913', '--tbox': '#fbf8f1', '--tbox-border': '#d6ccb6', '--cur': '#e6e4ff', '--gap-bg': '#fbf8f1', '--gap-border': '#b8ad93', '--gap-text': '#5b5346', '--scroll-track': '#efe8da', '--scroll-thumb': '#c2b69c', '--slot-filled': '#c9c8f7', '--slot-ok': '#d5f2e3', '--slot-bad': '#fbd9df', '--chip-bg': '#efe8da', '--chip-text': '#1e1913' },
+        slate: { bg: { 950: '#f4efe4', 900: '#fbf8f1', 800: '#efe8da', 700: '#e2d9c6' }, border: { 800: '#e4dccb', 700: '#d6ccb6', 600: '#c2b69c' }, text: { 100: '#1e1913', 200: '#2a241b', 300: '#3f382c', 400: '#544c3d', 500: '#68604f', 600: '#857c6b', 900: '#1e1913' } },
+        vars: { '--bg': '#f4efe4', '--fg': '#1e1913', '--tbox': '#fbf8f1', '--tbox-border': '#d6ccb6', '--cur': '#e6e4ff', '--gap-bg': '#fbf8f1', '--gap-border': '#b8ad93', '--gap-text': '#3f382c', '--scroll-track': '#efe8da', '--scroll-thumb': '#c2b69c', '--slot-filled': '#c9c8f7', '--slot-ok': '#d5f2e3', '--slot-bad': '#fbd9df', '--chip-bg': '#efe8da', '--chip-text': '#1e1913' },
         extra: { 'bg-indigo-950/40': '#eceefe', 'bg-purple-950/20': '#f3eafd', 'bg-sky-950/40': '#e6f3fc', 'bg-amber-950/50': '#fff3d6', 'bg-rose-950/60': '#fde8ec', 'bg-indigo-500/20': '#e0e3fb', 'bg-rose-500/20': '#fbdde3', 'bg-emerald-500/20': '#d8f3e6', 'bg-amber-500/15': '#fdf0d0', 'bg-purple-500/15': '#f3eafd', 'border-purple-500/70': '#a855f7', 'hover:bg-amber-500/25': '#fbe6b3',
-            'text-indigo-300': '#4338ca', 'text-indigo-400': '#4f46e5', 'text-indigo-200/80': '#3730a3', 'text-indigo-200': '#3730a3', 'text-purple-300': '#7e22ce', 'text-purple-400': '#7e22ce', 'text-sky-300': '#0369a1', 'text-sky-200': '#075985', 'text-amber-300': '#b45309', 'text-amber-300/80': '#b45309', 'text-amber-200': '#92400e', 'text-amber-100': '#78350f', 'text-amber-400': '#b45309', 'text-emerald-300': '#047857', 'text-emerald-400': '#059669', 'text-emerald-200': '#065f46', 'text-rose-300/80': '#be123c', 'text-rose-200': '#9f1239', 'text-rose-400': '#e11d48' } },
+            'text-indigo-300': '#4338ca', 'text-indigo-400': '#4f46e5', 'text-indigo-200/80': '#3730a3', 'text-indigo-200': '#3730a3', 'text-purple-300': '#7e22ce', 'text-purple-400': '#7e22ce', 'text-sky-300': '#0369a1', 'text-sky-200': '#075985', 'text-amber-300': '#b45309', 'text-amber-300/80': '#b45309', 'text-amber-200': '#92400e', 'text-amber-100': '#78350f', 'text-amber-400': '#b45309', 'text-emerald-300': '#047857', 'text-emerald-400': '#059669', 'text-emerald-200': '#065f46', 'text-emerald-100': '#064e3b', 'bg-emerald-600/20': '#d8f3e6', 'bg-emerald-500/20': '#d8f3e6', 'bg-emerald-950/40': '#e3f6ec', 'text-rose-100': '#881337', 'bg-rose-500/20': '#fbdde3', 'bg-rose-950/40': '#fde8ec', 'bg-rose-950/60': '#fde8ec', 'text-rose-300': '#be123c', 'bg-sky-950/40': '#e6f3fc', 'text-sky-100': '#0c4a6e', 'text-sky-300': '#0369a1', 'text-rose-300/80': '#be123c', 'text-rose-200': '#9f1239', 'text-rose-400': '#e11d48' } },
     chalk: { name: '칠판', desc: '짙은 초록 칠판에 분필 글씨 느낌의 차분한 어두운 테마', swatch: ['#0f1f18', '#20423a', '#6366f1', '#f2f7ea'], dark: true,
         slate: { bg: { 950: '#0f1f18', 900: '#173028', 800: '#20423a', 700: '#2b5449' }, border: { 800: '#2b5449', 700: '#396a5c', 600: '#4a8371' }, text: { 100: '#f2f7ea', 200: '#e4ecd9', 300: '#c9d6bd', 400: '#a4b79d', 500: '#809a7d', 600: '#657d66', 900: '#0f1f18' } },
         vars: { '--bg': '#0f1f18', '--fg': '#f2f7ea', '--tbox': '#173028', '--tbox-border': '#396a5c', '--cur': '#243a55', '--gap-bg': '#0f1f18', '--gap-border': '#4a8371', '--gap-text': '#a4b79d', '--scroll-track': '#173028', '--scroll-thumb': '#396a5c', '--slot-filled': 'rgba(67,56,202,.55)', '--slot-ok': 'rgba(6,95,70,.55)', '--slot-bad': 'rgba(159,18,57,.45)', '--chip-bg': '#20423a', '--chip-text': '#f2f7ea' } },
@@ -2137,6 +2197,10 @@ function pickThemeStart(k) { applyTheme(k); playSound('click'); renderStart(); }
 /* ---- 도움말 토글 ---- */
 let userName = '';
 try { userName = localStorage.getItem('wf_name') || ''; } catch (e) {}
+let userCls = '';
+try { userCls = localStorage.getItem('wf_cls') || ''; } catch (e) {}
+function saveCls(c) { userCls = String(c || '').trim().slice(0, 10); try { localStorage.setItem('wf_cls', userCls); } catch (e) {} }
+function changeCls() { const v = prompt('반을 적어 주세요 (예: 2-3). 비우면 반 구분 없이 전체 랭킹만 씁니다.', userCls); if (v === null) return; saveCls(v); submitScore(); renderStart(); }
 function saveName(n) { userName = n.trim().slice(0, 12); try { localStorage.setItem('wf_name', userName); } catch (e) {} updateScoreChip(); submitScore(); }
 const normName = n => String(n || '').replace(/\s+/g, '').toLowerCase();
 async function nameTaken(name) {
@@ -2156,9 +2220,16 @@ async function submitName() {
         if (msg) { msg.textContent = `'${name}'은(는) 이미 다른 사람이 쓰고 있어요. 뒤에 숫자나 반 이름을 붙여 보세요. (예: ${name}2)`; msg.className = 'text-[11px] text-rose-400 text-center font-bold'; }
         v.focus(); v.select(); playSound('wrong'); return;
     }
+    const ci = document.getElementById('cls-input'); if (ci) saveCls(ci.value);
     saveName(name); startTutorial();
 }
 function changeName() { userName = ''; try { localStorage.removeItem('wf_name'); } catch (e) {} renderStart(); setTimeout(() => document.getElementById('name-input')?.focus(), 50); }
+let autoCheck = true;
+try { autoCheck = localStorage.getItem('wf_auto') !== '0'; } catch (e) {}
+let _autoTimer = null;
+function autoLater(fn, ms = 350) { if (!autoCheck) return; clearTimeout(_autoTimer); _autoTimer = setTimeout(fn, ms); }
+function toggleAuto() { autoCheck = !autoCheck; try { localStorage.setItem('wf_auto', autoCheck ? '1' : '0'); } catch (e) {} applyAutoBtn(); playSound('click'); }
+function applyAutoBtn() { const b = document.getElementById('btn-auto'); if (b) { b.innerHTML = `<i class="fa-solid ${autoCheck ? 'fa-bolt text-amber-300' : 'fa-hand-pointer'} sm:mr-1"></i><span class="hidden sm:inline">${autoCheck ? '자동 검증' : '수동 검증'}</span>`; b.title = autoCheck ? '선택이 끝나면 자동으로 검증하고 다음으로 넘어갑니다 (누르면 수동으로)' : '검증 버튼을 직접 눌러야 합니다 (누르면 자동으로)'; } }
 let hintsOn = true;
 try { hintsOn = localStorage.getItem('wf_hints') !== '0'; } catch (e) {}
 function applyHints() {
@@ -2232,36 +2303,48 @@ function myRecordHtml() {
 }
 function submitScore() {
     if (!RANK_API || !userName) return;
-    const payload = { pid, name: userName, score: stats.score, words: stats.words, wrong: stats.wrong, best: stats.best };
+    const payload = { pid, name: userName, score: stats.score, words: stats.words, wrong: stats.wrong, best: stats.best, cls: userCls };
     try {
         fetch(RANK_API, { method: 'POST', body: JSON.stringify(payload) }).then(r => r.json()).then(d => {
             if (d && d.error === 'name_taken') showExplanationModal(`'${userName}'은(는) 이미 다른 사람이 쓰는 이름이라 랭킹에 올라가지 않았어요. 시작 화면의 '이름 바꾸기'로 다른 이름을 적어 주세요.`);
         }).catch(() => {});
     } catch (e) {}
 }
+let rankCache = null, rankTab = 'all';
 async function openRanking() {
     const body = document.getElementById('rank-body');
     document.getElementById('rank-modal').classList.remove('hidden');
-    body.innerHTML = `<div class="text-[11px] text-slate-400">내 기록 ${userName ? `· <b class="text-slate-200">${userName}</b>` : ''}</div>${myRecordHtml()}<div class="text-center text-slate-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> 불러오는 중…</div>`;
-    if (!RANK_API) { body.querySelector('.py-4').innerHTML = '이 배포판에는 공유 랭킹 서버가 연결되어 있지 않습니다. 내 기록만 이 기기에 저장됩니다.'; return; }
+    body.innerHTML = `<div class="text-[11px] text-slate-400">내 기록 ${userName ? `· <b class="text-slate-200">${userName}</b>${userCls ? ` (${userCls})` : ''}` : ''}</div>${myRecordHtml()}<div id="rank-list" class="text-center text-slate-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> 불러오는 중…</div>`;
+    if (!RANK_API) { document.getElementById('rank-list').innerHTML = '이 배포판에는 공유 랭킹 서버가 연결되어 있지 않습니다. 내 기록만 이 기기에 저장됩니다.'; return; }
     try {
-        const res = await fetch(RANK_API + '?limit=100&t=' + Date.now());
-        const data = await res.json();
-        const rows = (data.rows || []).filter(r => r.words > 0 || r.pid === pid).sort((a, b) => b.score - a.score || a.words - b.words);
-        const myIdx = rows.findIndex(r => r.pid === pid);
-        let html = `<div class="text-[11px] text-slate-400 flex items-center justify-between"><span>전체 ${rows.length}명${myIdx >= 0 ? ` · 내 순위 <b class="text-amber-300">${myIdx + 1}위</b>` : ''}</span><span>${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준</span></div>
-            <table class="w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-slate-500"><th class="text-left px-2">순위</th><th class="text-left px-2">이름</th><th class="px-2">총점</th><th class="px-2">단어</th><th class="px-2">연속</th></tr></thead><tbody>`;
-        rows.slice(0, 100).forEach((r, i) => {
-            const me = r.pid === pid;
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-            html += `<tr class="${me ? 'bg-amber-500/15' : 'bg-slate-950'}"><td class="px-2 py-1.5 font-bold">${medal}</td><td class="px-2 py-1.5 font-bold ${me ? 'text-amber-300' : 'text-slate-100'}">${String(r.name || '').replace(/[<>&]/g, '')}${me ? ' (나)' : ''}</td><td class="px-2 text-center font-black text-indigo-300">${r.score}</td><td class="px-2 text-center">${r.words}</td><td class="px-2 text-center">${r.best}</td></tr>`;
-        });
-        html += `</tbody></table>`;
-        if (!rows.length) html += `<div class="text-center text-slate-500 py-3">아직 기록이 없습니다. 첫 단어를 풀면 올라갑니다.</div>`;
-        body.querySelector('.py-4').outerHTML = html;
+        const res = await fetch(RANK_API + '?limit=200&t=' + Date.now());
+        rankCache = await res.json();
+        renderRankTab(rankTab);
     } catch (e) {
-        body.querySelector('.py-4').innerHTML = '랭킹 서버에 연결하지 못했습니다. 잠시 후 다시 열어 보세요.';
+        document.getElementById('rank-list').innerHTML = '랭킹 서버에 연결하지 못했습니다. 잠시 후 다시 열어 보세요.';
     }
+}
+function renderRankTab(tab) {
+    rankTab = tab;
+    const data = rankCache || {}, all = (data.rows || []);
+    const hasWeek = all.some(r => 'wscore' in r), hasCls = all.some(r => r.cls);
+    let rows = all.filter(r => r.words > 0 || r.pid === pid);
+    if (tab === 'week') rows = rows.filter(r => (r.wscore || 0) > 0 || r.pid === pid).sort((a, b) => (b.wscore || 0) - (a.wscore || 0) || a.words - b.words);
+    else if (tab === 'cls') rows = rows.filter(r => r.cls && r.cls === userCls).sort((a, b) => b.score - a.score || a.words - b.words);
+    else rows = rows.sort((a, b) => b.score - a.score || a.words - b.words);
+    const myIdx = rows.findIndex(r => r.pid === pid);
+    const tabBtn = (k, label, show) => show ? `<button onclick="renderRankTab('${k}')" class="px-3 py-1.5 rounded-lg text-xs font-bold border ${rankTab === k ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700'}">${label}</button>` : '';
+    let html = `<div class="flex flex-wrap gap-1.5">${tabBtn('all', '전체 누적', true)}${tabBtn('week', '이번 주', hasWeek)}${tabBtn('cls', userCls ? `우리 반 (${userCls})` : '우리 반', hasCls || !!userCls)}</div>`;
+    if (tab === 'cls' && !userCls) html += `<div class="text-xs text-slate-400 py-3">시작 화면의 '반 입력'에서 반을 적으면 같은 반끼리 순위를 볼 수 있어요.</div>`;
+    html += `<div class="text-[11px] text-slate-400 flex items-center justify-between"><span>${tab === 'week' ? '이번 주' : tab === 'cls' ? '우리 반' : '전체'} ${rows.length}명${myIdx >= 0 ? ` · 내 순위 <b class="text-amber-300">${myIdx + 1}위</b>` : ''}</span><span>${tab === 'week' && data.week ? `${data.week} 주 · ` : ''}${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준</span></div>
+        <table class="w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-slate-500"><th class="text-left px-2">순위</th><th class="text-left px-2">이름</th><th class="px-2">${tab === 'week' ? '이번 주' : '총점'}</th><th class="px-2">문제</th><th class="px-2">연속</th></tr></thead><tbody>`;
+    rows.slice(0, 100).forEach((r, i) => {
+        const me = r.pid === pid, medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+        html += `<tr class="${me ? 'bg-amber-500/15' : 'bg-slate-950'}"><td class="px-2 py-1.5 font-bold">${medal}</td><td class="px-2 py-1.5 font-bold ${me ? 'text-amber-300' : 'text-slate-100'}">${String(r.name || '').replace(/[<>&]/g, '')}${r.cls && tab !== 'cls' ? ` <span class="text-[10px] text-slate-500 font-medium">${String(r.cls).replace(/[<>&]/g, '')}</span>` : ''}${me ? ' (나)' : ''}</td><td class="px-2 text-center font-black text-indigo-300">${tab === 'week' ? (r.wscore || 0) : r.score}</td><td class="px-2 text-center">${r.words}</td><td class="px-2 text-center">${r.best}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    if (!rows.length) html += `<div class="text-center text-slate-500 py-3">${tab === 'week' ? '이번 주에는 아직 기록이 없습니다.' : tab === 'cls' ? '우리 반 기록이 아직 없습니다.' : '아직 기록이 없습니다. 첫 단어를 풀면 올라갑니다.'}</div>`;
+    const list = document.getElementById('rank-list'); if (list) { list.className = 'space-y-2'; list.innerHTML = html; }
 }
 function closeRanking() { document.getElementById('rank-modal').classList.add('hidden'); }
 
@@ -2287,7 +2370,7 @@ window.onload = function () {
     const errors = WordEngine.selfCheck();
     if (errors.length) { console.error('레시피 오류', errors); const w = document.getElementById('engine-warning'); w.classList.remove('hidden'); w.innerHTML = `<b>엔진 자체 검증 실패 (${errors.length}건)</b><br>${errors.join('<br>')}`; }
     document.getElementById('total-words-count').innerText = PROBLEMS.length;
-    applyTheme(currentTheme); applyHints(); updateScoreChip();
+    applyTheme(currentTheme); applyHints(); applyAutoBtn(); updateScoreChip();
     renderGuide();
     loadWord(0);
     showStart();
@@ -2347,6 +2430,11 @@ function sadd(key, cat, gloss, extra = {}) { const form = key.split('/')[0]; SBA
 [["깊-/형","밑까지의 거리가 멀다"]].forEach(([k,g]) => sadd(k, "형용사 어간", g));
 [["늙-/동","나이가 많아지다"],["지나-/동","어떤 곳을 거쳐 가다"]].forEach(([k,g]) => sadd(k, "동사 어간", g));
 [["한/수관","하나의(수 관형사)"]].forEach(([k,g]) => sadd(k, "관형사", g));
+[["모르-/동","알지 못하다"],["잡수시-/동","'먹다'의 높임말(주체 높임)"],["뵈-/동","'보다'의 높임말(객체 높임)"],["그치-/동","비·눈이 멎다"],["걷-/동","다리로 나아가다"],["빠지-/동","물속으로 들어가다"]].forEach(([k,g]) => sadd(k, "동사 어간", g));
+[["빨리/부","속도가 빠르게"],["벌써/부","이미 오래전에"]].forEach(([k,g]) => sadd(k, "부사", g));
+[["할아버지/명","아버지의 아버지"]].forEach(([k,g]) => sadd(k, "명사", g));
+[["-으시-","주체 높임('-시-'의 이형태, 받침 뒤)"]].forEach(([k,g]) => sadd(k, "선어말 어미", g));
+[["-아요/말","종결 어미(평서, 해요체 상대 높임)"],["-으면서/연","연결 어미(동시 진행, 받침 뒤)"]].forEach(([k,g]) => sadd(k, "어말 어미", g));
 [["물-/깨물","이로 누르다"],["쌓-/동","포개어 놓다"],["사-/구매","값을 주고 얻다"],["신-/동","발에 꿰다"],["놓-/동","자리에 두다"],["만들-/동","새로 생기게 하다"],["하-/동","행하다"],["업-/동","등에 지다"]].forEach(([k,g]) => sadd(k, "동사 어간", g));
 
 const SCAT = {
@@ -2560,6 +2648,61 @@ const SENTENCES = [
   { t: "하늘은 날더러 구름이 되라 하고 땅은 날더러 바람이 되라 하네", st: {"k": "이어진", "rel": "대등", "link": 4, "mean": "나열", "why": "'하고'의 '-고'는 두 절(하늘은 … 하다 / 땅은 … 하네)을 나란히 벌인 나열이므로 대등하게 이어진 문장입니다. 각 절 안에는 '구름이 되라', '바람이 되라'가 인용절로 안겨 있습니다.", "types": ["인용절"], "parts": [2, 3, 7, 8]}, tense: 현재, why: "서술어 '하네'에 시제 선어말 어미가 없으므로 현재입니다. '되라'는 '되-'에 명령형 종결 어미 '-라'가 붙은 것입니다.", exam: true, src: "신경림, 「목계장터」", end: {"k": "평서문", "why": "종결 어미 '-네'가 시에서는 담담히 서술하는 평서의 뜻으로 쓰였습니다."}, quo: {"k": "간접 인용", "why": "'되라 하고', '되라 하네'는 인용 조사 '고'가 생략된 간접 인용입니다(되라고 하고 → 되라 하고)."}, e: [["하늘:하늘", "은:은/조"], ["날:나/대,ㄹ/조|더러:더러/조"], ["구름:구름/명", "이:이/보"], ["되:되-/동|라:-라/말"], ["하:하-/동|고:-고/연"], ["땅:땅", "은:은/조"], ["날:나/대,ㄹ/조|더러:더러/조"], ["바람:바람", "이:이/보"], ["되:되-/동|라:-라/말"], ["하:하-/동|네:-네/말"]] },
   { t: "산은 날더러 들꽃이 되라 하고 강은 날더러 잔돌이 되라 하네", st: {"k": "이어진", "rel": "대등", "link": 4, "mean": "나열", "why": "'하고'의 '-고'는 두 절을 나란히 벌인 나열이므로 대등하게 이어진 문장입니다. 각 절 안에 '들꽃이 되라', '잔돌이 되라'가 인용절로 안겨 있습니다.", "types": ["인용절"], "parts": [2, 3, 7, 8]}, tense: 현재, why: "서술어 '하네'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, src: "신경림, 「목계장터」", comp: {"들꽃": "들꽃", "잔돌": "잔돌"}, end: {"k": "평서문", "why": "종결 어미 '-네'가 시에서는 담담히 서술하는 평서의 뜻으로 쓰였습니다."}, quo: {"k": "간접 인용", "why": "인용 조사 '고'가 생략된 간접 인용입니다(되라고 하네 → 되라 하네)."}, e: [["산:산/명", "은:은/조"], ["날:나/대,ㄹ/조|더러:더러/조"], ["들:들|꽃:꽃", "이:이/보"], ["되:되-/동|라:-라/말"], ["하:하-/동|고:-고/연"], ["강:강/명", "은:은/조"], ["날:나/대,ㄹ/조|더러:더러/조"], ["잔:잘-/형,-ㄴ|돌:돌", "이:이/보"], ["되:되-/동|라:-라/말"], ["하:하-/동|네:-네/말"]] },
   { t: "한겨울 못 잊을 사람하고 한계령쯤을 지나다가 뜻밖의 폭설을 만나고 싶다", st: {"k": "이어진", "rel": "종속", "link": 5, "mean": "전환", "why": "'지나다가'의 '-다가'는 앞 동작(지나다) 중에 뒤 동작으로 옮겨 감을 나타내므로 종속적으로 이어진 문장입니다. 앞 절 안에는 '못 잊을'이 '사람'을 꾸미는 관형절로 안겨 있습니다.", "types": ["관형절"], "parts": [1, 2]}, tense: 현재, why: "'-고 싶다'로 바람을 나타내며 시제 선어말 어미가 없으므로 현재입니다. '-다가'는 동작의 전환을 나타내는 연결 어미입니다.", exam: true, src: "문정희, 「한계령을 위한 연가」", comp: {"한겨울": "한겨울", "한계령쯤": "한계령쯤", "뜻밖": "뜻밖"}, neg: {"k": "짧은 부정", "t": "능력 부정", "parts": [1], "why": "부사 '못'을 쓴 짧은 부정(능력 부정)입니다. 잊고 싶어도 잊을 수 없는 사람이라는 뜻입니다."}, e: [["한:한-|겨울:겨울"], ["못:못/부"], ["잊:잊-|을:-을/관"], ["사람:사람/명", "하고:하고/조"], ["한계령:한계령/고유|쯤:-쯤", "을:을/조"], ["지나:지나-/동|다가:-다가/연"], ["뜻:뜻/명|밖:밖/명", "의:의/조"], ["폭설:폭설/명", "을:을/조"], ["만나:만나-/동|고:-고/보"], ["싶:싶-/보조|다:-다/말"]] },
+  { t: "비가 오니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'오니'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, end: {"k": "의문문", "q": "판정 의문문", "why": "'예/아니요'로 대답할 수 있는 판정 의문문입니다."}, e: [["비:비", "가:가/조"], ["오:오-|니:-니/말"]] },
+  { t: "누나는 집에 갔니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "'갔니'의 '갔'은 '가-'에 과거 '-았-'이 붙어 줄어든 것입니다.", exam: true, end: {"k": "의문문", "q": "판정 의문문", "why": "'예/아니요'로 대답하는 판정 의문문입니다."}, e: [["누나:누나/명", "는:는/조"], ["집:집", "에:에/조"], ["갔:가-,-았-|니:-니/말"]] },
+  { t: "아기가 벌써 잠들었니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "서술어 '잠들었니'에 과거 '-었-'이 있습니다.", exam: true, comp: {"잠들었니": "잠들다"}, end: {"k": "의문문", "q": "판정 의문문", "why": "'예/아니요'로 대답하는 판정 의문문입니다."}, e: [["아기:아기/명", "가:가/조"], ["벌써:벌써/부"], ["잠:자-,-ㅁ|들:들-|었:-었-|니:-니/말"]] },
+  { t: "눈이 많이 왔니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "'왔니'의 '왔'은 '오-'에 과거 '-았-'이 붙어 줄어든 것입니다.", exam: true, comp: {"많이": "많이"}, end: {"k": "의문문", "q": "판정 의문문", "why": "'예/아니요'로 대답하는 판정 의문문입니다."}, e: [["눈:눈", "이:이/조"], ["많:많-|이:-이/부"], ["왔:오-,-았-|니:-니/말"]] },
+  { t: "누가 노래를 부르니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'부르니'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, end: {"k": "의문문", "q": "설명 의문문", "why": "의문사 '누(누구)'가 있어 구체적인 대답을 요구하는 설명 의문문입니다."}, e: [["누:누/대", "가:가/조"], ["노래:노래", "를:를/조"], ["부르:부르-/동|니:-니/말"]] },
+  { t: "언제 집에 가니", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'가니'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, end: {"k": "의문문", "q": "설명 의문문", "why": "의문사 '언제'가 있는 설명 의문문입니다."}, e: [["언제:언제/부"], ["집:집", "에:에/조"], ["가:가-|니:-니/말"]] },
+  { t: "누가 눈사람을 만들었니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "서술어 '만들었니'에 과거 '-었-'이 있습니다.", exam: true, comp: {"눈사람": "눈사람"}, end: {"k": "의문문", "q": "설명 의문문", "why": "의문사 '누(누구)'가 있는 설명 의문문입니다."}, e: [["누:누/대", "가:가/조"], ["눈:눈/눈|사람:사람", "을:을/조"], ["만들:만들-/동|었:-었-|니:-니/말"]] },
+  { t: "누가 그것을 모르겠니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 미래, why: "'모르겠니'의 '-겠-'은 추측을 나타내는 선어말 어미입니다.", exam: true, comp: {"그것": "그것"}, end: {"k": "의문문", "q": "수사 의문문", "why": "'누구나 다 안다'는 뜻을 물음의 형식으로 강조한 수사 의문문입니다."}, e: [["누:누/대", "가:가/조"], ["그:그/관|것:것/의명", "을:을/조"], ["모르:모르-/동|겠:-겠-|니:-니/말"]] },
+  { t: "설마 눈이 오겠니", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 미래, why: "'-겠-'은 추측의 선어말 어미입니다.", exam: true, end: {"k": "의문문", "q": "수사 의문문", "why": "'설마'와 함께 쓰여 '눈이 올 리 없다'는 뜻을 나타내는 수사 의문문입니다."}, e: [["설마:설마/문부"], ["눈:눈", "이:이/조"], ["오:오-|겠:-겠-|니:-니/말"]] },
+  { t: "손을 씻어라", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-어라'는 명령형 종결 어미입니다.", exam: true, end: {"k": "명령문", "why": "명령형 종결 어미 '-어라'가 쓰였습니다."}, e: [["손:손", "을:을/조"], ["씻:씻-|어라:-어라/말"]] },
+  { t: "밥을 다 먹어라", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-어라'는 명령형 종결 어미입니다.", exam: true, end: {"k": "명령문", "why": "명령형 종결 어미 '-어라'가 쓰였습니다."}, e: [["밥:밥", "을:을/조"], ["다:다/부"], ["먹:먹-|어라:-어라/말"]] },
+  { t: "빨리 집으로 가라", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'가라'는 '가-'에 명령형 종결 어미 '-아라'가 붙어 줄어든 것입니다.", exam: true, end: {"k": "명령문", "why": "명령형 종결 어미 '-아라'가 쓰였습니다."}, e: [["빨리:빨리/부"], ["집:집", "으로:으로/조"], ["가라:가-,-아라/말"]] },
+  { t: "눈을 감아라", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-아라'는 명령형 종결 어미입니다.", exam: true, end: {"k": "명령문", "why": "명령형 종결 어미 '-아라'가 쓰였습니다."}, e: [["눈:눈", "을:을/조"], ["감:감-|아라:-아라/말"]] },
+  { t: "여기서 놀아라", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-아라'는 명령형 종결 어미입니다. '서'는 '에서'의 준말입니다.", exam: true, end: {"k": "명령문", "why": "명령형 종결 어미 '-아라'가 쓰였습니다."}, e: [["여기:여기/지대", "서:서/조"], ["놀:놀-|아라:-아라/말"]] },
+  { t: "함께 노래를 부르자", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-자'는 청유형 종결 어미입니다.", exam: true, end: {"k": "청유문", "why": "청유형 종결 어미 '-자'가 쓰였습니다."}, e: [["함께:함께/부"], ["노래:노래", "를:를/조"], ["부르:부르-/동|자:-자/말"]] },
+  { t: "손을 잡자", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-자'는 청유형 종결 어미입니다.", exam: true, end: {"k": "청유문", "why": "청유형 종결 어미 '-자'가 쓰였습니다."}, e: [["손:손", "을:을/조"], ["잡:잡-|자:-자/말"]] },
+  { t: "눈사람을 만들자", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-자'는 청유형 종결 어미입니다.", exam: true, comp: {"눈사람": "눈사람"}, end: {"k": "청유문", "why": "청유형 종결 어미 '-자'가 쓰였습니다."}, e: [["눈:눈/눈|사람:사람", "을:을/조"], ["만들:만들-/동|자:-자/말"]] },
+  { t: "이제 집에 가자", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'-자'는 청유형 종결 어미입니다.", exam: true, end: {"k": "청유문", "why": "청유형 종결 어미 '-자'가 쓰였습니다."}, e: [["이제:이제/부"], ["집:집", "에:에/조"], ["가:가-|자:-자/말"]] },
+  { t: "눈이 많이 왔구나", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "'왔구나'의 '왔'은 '오-'에 과거 '-았-'이 붙어 줄어든 것이고, '-구나'는 감탄형 종결 어미입니다.", exam: true, comp: {"많이": "많이"}, end: {"k": "감탄문", "why": "감탄형 종결 어미 '-구나'가 쓰였습니다."}, e: [["눈:눈", "이:이/조"], ["많:많-|이:-이/부"], ["왔:오-,-았-|구나:-구나/말"]] },
+  { t: "꽃이 참 예쁘구나", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "형용사 '예쁘다'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, end: {"k": "감탄문", "why": "감탄형 종결 어미 '-구나'가 쓰였습니다."}, e: [["꽃:꽃", "이:이/조"], ["참:참/부"], ["예쁘:예쁘-/형|구나:-구나/말"]] },
+  { t: "아이가 벌써 잠들었구나", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "서술어 '잠들었구나'에 과거 '-었-'이 있습니다.", exam: true, comp: {"잠들었구나": "잠들다"}, end: {"k": "감탄문", "why": "감탄형 종결 어미 '-구나'가 쓰였습니다."}, e: [["아이:아이", "가:가/조"], ["벌써:벌써/부"], ["잠:자-,-ㅁ|들:들-|었:-었-|구나:-구나/말"]] },
+  { t: "물이 참 차구나", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "형용사 '차다'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, end: {"k": "감탄문", "why": "감탄형 종결 어미 '-구나'가 쓰였습니다."}, e: [["물:물", "이:이/조"], ["참:참/부"], ["차:차-/형|구나:-구나/말"]] },
+  { t: "하늘이 참 푸르네", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "형용사 '푸르다'에 시제 선어말 어미가 없으므로 현재입니다.", exam: true, end: {"k": "감탄문", "why": "종결 어미 '-네'로 느낌을 나타내는 감탄문입니다."}, e: [["하늘:하늘", "이:이/조"], ["참:참/부"], ["푸르:푸르-|네:-네/말"]] },
+  { t: "할머니께서 오신다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'오신다'의 '신'은 높임 '-시-'와 현재 '-ㄴ-'이 한 글자에 든 것입니다.", exam: true, hon: {"has": true, "types": ["주체 높임"], "means": ["높임 선어말 어미", "높임 조사"], "why": "'께서'와 '-시-'로 주체(할머니)를 높였습니다."}, e: [["할머니:할머니", "께서:께서/조"], ["오:오-|신:-시-,-ㄴ-/현|다:-다/말"]] },
+  { t: "아버지께서 책을 읽으신다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'읽으신다'의 '으신'은 높임 '-으시-'(받침 뒤 '-시-')와 현재 '-ㄴ-'이 든 것입니다.", exam: true, hon: {"has": true, "types": ["주체 높임"], "means": ["높임 선어말 어미", "높임 조사"], "why": "'께서'와 '-으시-'로 주체(아버지)를 높였습니다."}, e: [["아버지:아버지", "께서:께서/조"], ["책:책", "을:을/조"], ["읽:읽-|으신:-으시-,-ㄴ-/현|다:-다/말"]] },
+  { t: "저는 할머니께 떡을 드렸어요", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "'드렸어요'의 '렸'은 '드리-'에 과거 '-었-'이 붙어 줄어든 것이고, '-어요'는 해요체 종결 어미입니다.", exam: true, hon: {"has": true, "types": ["객체 높임", "상대 높임"], "means": ["높임 조사", "높임 특수 어휘", "높임 종결 어미"], "why": "'께'와 '드리다'로 객체(할머니)를, '저'와 '-어요'로 듣는 이를 높였습니다."}, e: [["저:저/대", "는:는/조"], ["할머니:할머니", "께:께/조"], ["떡:떡/명", "을:을/조"], ["드렸:드리-/동,-었-|어요:-어요/말"]] },
+  { t: "어머니께서 진지를 잡수신다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'잡수신다'의 '신'은 '잡수시-'에 현재 '-ㄴ-'이 붙은 것입니다.", exam: true, hon: {"has": true, "types": ["주체 높임"], "means": ["높임 조사", "높임 특수 어휘"], "why": "'께서', '진지', '잡수시다'로 주체(어머니)를 높였습니다."}, e: [["어머니:어머니", "께서:께서/조"], ["진지:진지/명", "를:를/조"], ["잡수신:잡수시-/동,-ㄴ-/현|다:-다/말"]] },
+  { t: "아이가 할머니를 뵈었다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "서술어 '뵈었다'에 과거 '-었-'이 있습니다.", exam: true, hon: {"has": true, "types": ["객체 높임"], "means": ["높임 특수 어휘"], "why": "'보다'의 높임말 '뵈다'로 객체(할머니)를 높였습니다."}, e: [["아이:아이", "가:가/조"], ["할머니:할머니", "를:를/조"], ["뵈:뵈-/동|었:-었-|다:-다/말"]] },
+  { t: "할아버지께서 주무십니다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'주무십니다'는 '주무시-'에 합쇼체 종결 어미 '-ㅂ니다'가 받침으로 붙은 것입니다.", exam: true, hon: {"has": true, "types": ["주체 높임", "상대 높임"], "means": ["높임 조사", "높임 특수 어휘", "높임 종결 어미"], "why": "'께서'와 '주무시다'로 주체(할아버지)를, '-ㅂ니다'로 듣는 이를 높였습니다."}, e: [["할아버지:할아버지/명", "께서:께서/조"], ["주무십니다:주무시-/동,-ㅂ니다/말"]] },
+  { t: "저는 집에 가요", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'가요'는 '가-'에 해요체 종결 어미 '-아요'가 붙어 줄어든 것입니다.", exam: true, hon: {"has": true, "types": ["상대 높임"], "means": ["높임 종결 어미", "높임 특수 어휘"], "why": "해요체 종결 어미 '-아요'와 겸양어 '저'로 듣는 이를 높였습니다."}, e: [["저:저/대", "는:는/조"], ["집:집", "에:에/조"], ["가요:가-,-아요/말"]] },
+  { t: "어머니께서 아기를 안으신다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'안으신다'의 '으신'은 높임 '-으시-'와 현재 '-ㄴ-'이 든 것입니다.", exam: true, hon: {"has": true, "types": ["주체 높임"], "means": ["높임 선어말 어미", "높임 조사"], "why": "'께서'와 '-으시-'로 주체(어머니)를 높였습니다."}, e: [["어머니:어머니", "께서:께서/조"], ["아기:아기/명", "를:를/조"], ["안:안-|으신:-으시-,-ㄴ-/현|다:-다/말"]] },
+  { t: "누나가 책을 읽고 있다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'-고 있다'로 진행 중임을 나타내며 시제 선어말 어미가 없으므로 현재입니다.", exam: true, asp: {"k": "진행상", "parts": [2, 3], "why": "'-고 있다'는 진행상 표현입니다."}, e: [["누나:누나/명", "가:가/조"], ["책:책", "을:을/조"], ["읽:읽-|고:-고/보"], ["있:있-/보조|다:-다/말"]] },
+  { t: "아이들이 눈싸움을 하고 있다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'-고 있다'로 진행 중임을 나타냅니다.", exam: true, comp: {"아이들": "아이들", "눈싸움": "눈싸움"}, asp: {"k": "진행상", "parts": [2, 3], "why": "'-고 있다'는 진행상 표현입니다."}, e: [["아이:아이|들:-들", "이:이/조"], ["눈:눈/눈|싸움:싸우-,-ㅁ", "을:을/조"], ["하:하-/동|고:-고/보"], ["있:있-/보조|다:-다/말"]] },
+  { t: "새가 나무에 앉아 있다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'-아 있다'로 앉은 상태가 이어짐을 나타냅니다.", exam: true, asp: {"k": "완료상", "parts": [2, 3], "why": "'-아 있다'는 동작이 끝난 뒤 그 상태가 지속됨을 나타내는 완료상입니다."}, e: [["새:새/조", "가:가/조"], ["나무:나무", "에:에/조"], ["앉:앉-/동|아:-아/보"], ["있:있-/보조|다:-다/말"]] },
+  { t: "아이가 밥을 다 먹어 버렸다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "'버렸다'의 '렸'은 '버리-'에 과거 '-었-'이 붙어 줄어든 것입니다.", exam: true, asp: {"k": "완료상", "parts": [3, 4], "why": "'-어 버리다'는 완료상 표현입니다."}, e: [["아이:아이", "가:가/조"], ["밥:밥", "을:을/조"], ["다:다/부"], ["먹:먹-|어:-어/보"], ["버렸:버리-/보조,-었-|다:-다/말"]] },
+  { t: "누나는 책을 읽으면서 밥을 먹는다", st: {"k": "이어진", "rel": "종속", "link": 2, "mean": "동시", "why": "'읽으면서'의 '-으면서'는 앞 동작이 진행되는 가운데 뒤 동작이 일어남을 나타내므로 종속적으로 이어진 문장입니다."}, tense: 현재, why: "'먹는다'에 현재 '-는-'이 있습니다. '-으면서'는 두 동작이 동시에 이어짐을 나타냅니다.", exam: true, asp: {"k": "진행상", "parts": [2], "why": "연결 어미 '-(으)면서'는 앞 동작의 진행을 나타내는 진행상 표현입니다."}, e: [["누나:누나/명", "는:는/조"], ["책:책", "을:을/조"], ["읽:읽-|으면서:-으면서/연"], ["밥:밥", "을:을/조"], ["먹:먹-|는:-는-/현|다:-다/말"]] },
+  { t: "눈이 다 녹아 있다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'-아 있다'로 녹은 상태가 이어짐을 나타냅니다.", exam: true, asp: {"k": "완료상", "parts": [2, 3], "why": "'-아 있다'는 완료상 표현입니다."}, e: [["눈:눈", "이:이/조"], ["다:다/부"], ["녹:녹-/동|아:-아/보"], ["있:있-/보조|다:-다/말"]] },
+  { t: "아기가 자고 있다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'-고 있다'로 진행 중임을 나타냅니다.", exam: true, asp: {"k": "진행상", "parts": [1, 2], "why": "'-고 있다'는 진행상 표현입니다."}, e: [["아기:아기/명", "가:가/조"], ["자:자-|고:-고/보"], ["있:있-/보조|다:-다/말"]] },
+  { t: "비가 그쳐 버렸다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "'그쳐'는 '그치-'에 보조적 연결 어미 '-어'가 붙어 줄어든 것이고, '버렸다'에 과거 '-었-'이 있습니다.", exam: true, asp: {"k": "완료상", "parts": [1, 2], "why": "'-어 버리다'는 완료상 표현입니다."}, e: [["비:비", "가:가/조"], ["그쳐:그치-/동,-어/보"], ["버렸:버리-/보조,-었-|다:-다/말"]] },
+  { t: "누나는 노래를 안 부른다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'부른다'의 '른'은 '부르-'에 현재 '-ㄴ-'이 붙은 것입니다.", exam: true, neg: {"k": "짧은 부정", "t": "의지·단순 부정", "parts": [2], "why": "부사 '안'을 쓴 짧은 부정(의지 부정)입니다."}, e: [["누나:누나/명", "는:는/조"], ["노래:노래", "를:를/조"], ["안:안/부"], ["부른:부르-/동,-ㄴ-/현|다:-다/말"]] },
+  { t: "아이는 아직 글을 못 읽는다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 현재, why: "'읽는다'에 현재 '-는-'이 있습니다.", exam: true, neg: {"k": "짧은 부정", "t": "능력 부정", "parts": [3], "why": "부사 '못'을 쓴 짧은 부정(능력 부정)입니다."}, e: [["아이:아이", "는:는/조"], ["아직:아직/부"], ["글:글", "을:을/조"], ["못:못/부"], ["읽:읽-|는:-는-/현|다:-다/말"]] },
+  { t: "눈이 녹지 않았다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "서술어 '않았다'에 과거 '-았-'이 있습니다.", exam: true, neg: {"k": "긴 부정", "t": "의지·단순 부정", "parts": [1, 2], "why": "'-지 않다'를 쓴 긴 부정이며, 주어가 사물이므로 단순 부정입니다."}, e: [["눈:눈", "이:이/조"], ["녹:녹-/동|지:-지/보"], ["않:않-/보조|았:-았-|다:-다/말"]] },
+  { t: "아이는 물을 마시지 못했다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "'못했다'의 '했'은 '못하-'에 과거 '-였-'이 붙어 줄어든 것입니다.", exam: true, neg: {"k": "긴 부정", "t": "능력 부정", "parts": [2, 3], "why": "'-지 못하다'를 쓴 긴 부정(능력 부정)입니다."}, e: [["아이:아이", "는:는/조"], ["물:물", "을:을/조"], ["마시:마시-/동|지:-지/보"], ["못했:못하-/보조,-였-|다:-다/말"]] },
+  { t: "여기서 놀지 마라", st: {"k": "홑", "why": "주어(너/우리)가 생략되었고 서술어가 하나입니다."}, tense: 현재, why: "'마라'는 '말-'에 명령형 종결 어미 '-아라'가 붙으며 ㄹ이 탈락한 것입니다.", exam: true, end: {"k": "명령문", "why": "명령형 종결 어미 '-아라'가 쓰인 부정 명령문입니다."}, neg: {"k": "긴 부정", "t": "금지", "parts": [1, 2], "why": "'-지 말다'를 쓴 부정 명령(금지)입니다."}, e: [["여기:여기/지대", "서:서/조"], ["놀:놀-|지:-지/보"], ["마라:말-/보조,-아라/말"]] },
+  { t: "우리 싸우지 말자", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'-자'는 청유형 종결 어미입니다.", exam: true, end: {"k": "청유문", "why": "청유형 종결 어미 '-자'가 쓰인 부정 청유문입니다."}, neg: {"k": "긴 부정", "t": "금지", "parts": [1, 2], "why": "'-지 말다'를 쓴 부정 청유(금지)입니다."}, e: [["우리:우리"], ["싸우:싸우-|지:-지/보"], ["말:말-/보조|자:-자/말"]] },
+  { t: "나는 그 말을 믿지 않는다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'않는다'에 현재 '-는-'이 있습니다.", exam: true, neg: {"k": "긴 부정", "t": "의지·단순 부정", "parts": [3, 4], "why": "'-지 않다'를 쓴 긴 부정(의지 부정)입니다."}, e: [["나:나/대", "는:는/조"], ["그:그/관"], ["말:말", "을:을/조"], ["믿:믿-/동|지:-지/보"], ["않:않-/보조|는:-는-/현|다:-다/말"]] },
+  { t: "아기는 아직 걷지 못한다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 현재, why: "'못한다'의 '한'은 '못하-'에 현재 '-ㄴ-'이 붙은 것입니다.", exam: true, neg: {"k": "긴 부정", "t": "능력 부정", "parts": [2, 3], "why": "'-지 못하다'를 쓴 긴 부정(능력 부정)입니다."}, e: [["아기:아기/명", "는:는/조"], ["아직:아직/부"], ["걷:걷-/동|지:-지/보"], ["못한:못하-/보조,-ㄴ-/현|다:-다/말"]] },
+  { t: "엄마가 아이를 자게 했다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "서술어 '했다'에 과거 '-였-'이 있습니다.", exam: true, vc: {"k": "사동", "how": "통사적 사동", "dir": "간접 사동", "parts": [2, 3], "why": "'-게 하다'는 통사적 사동이며 간접 사동으로만 해석됩니다. ('재웠다'라면 파생적 사동)"}, e: [["엄마:엄마/명", "가:가/조"], ["아이:아이", "를:를/조"], ["자:자-|게:-게/보"], ["했:하-/보조,-였-|다:-다/말"]] },
+  { t: "누나가 나에게 책을 읽게 했다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "서술어 '했다'에 과거 '-였-'이 있습니다.", exam: true, vc: {"k": "사동", "how": "통사적 사동", "dir": "간접 사동", "parts": [3, 4], "why": "'-게 하다'는 통사적 사동이며 간접 사동으로만 해석됩니다. ('읽혔다'라면 파생적 사동)"}, e: [["누나:누나/명", "가:가/조"], ["나:나/대", "에게:에게/조"], ["책:책", "을:을/조"], ["읽:읽-|게:-게/보"], ["했:하-/보조,-였-|다:-다/말"]] },
+  { t: "꿈이 이루어졌다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "'졌다'의 '졌'은 보조 용언 '지-'에 과거 '-었-'이 붙어 줄어든 것입니다.", exam: true, comp: {"꿈": "꿈"}, vc: {"k": "피동", "how": "통사적 피동", "parts": [1], "why": "'-어지다'는 통사적 피동입니다."}, e: [["꿈:꾸-,-ㅁ", "이:이/조"], ["이루:이루-/동|어:-어/보|졌:지-/보조,-었-|다:-다/말"]] },
+  { t: "아이가 물에 빠지게 되었다", st: {"k": "홑", "why": "본용언+보조 용언으로 서술어가 하나입니다."}, tense: 과거, why: "서술어 '되었다'에 과거 '-었-'이 있습니다.", exam: true, vc: {"k": "피동", "how": "통사적 피동", "parts": [2, 3], "why": "'-게 되다'는 주어의 뜻과 상관없이 그렇게 됨을 나타내는 통사적 피동 표현입니다."}, e: [["아이:아이", "가:가/조"], ["물:물", "에:에/조"], ["빠지:빠지-/동|게:-게/보"], ["되:되-/보조|었:-었-|다:-다/말"]] },
+  { t: "길이 열렸다", st: {"k": "홑", "why": "주어와 서술어의 관계가 한 번만 나타납니다."}, tense: 과거, why: "'열렸다'의 '렸'은 피동 접미사 '-리-'와 과거 '-었-'이 줄어든 것입니다.", exam: true, e: [["길:길", "이:이/조"], ["열:열-|렸:-리-/피,-었-|다:-다/말"]] },
+  { t: "아이는 “눈이 온다”라고 말했다", st: {"k": "안은", "types": ["인용절"], "parts": [1, 2], "why": "'눈이 온다'를 그대로 옮기고 조사 '라고'를 붙인 직접 인용절입니다."}, tense: 과거, why: "서술어 '말했다'에 과거 '-였-'이 있습니다.", exam: true, comp: {"말했다": "말하다"}, quo: {"k": "직접 인용", "why": "따옴표와 조사 '라고'가 쓰인 직접 인용입니다."}, e: [["아이:아이", "는:는/조"], ["눈:눈", "이:이/조"], ["온:오-,-ㄴ-/현|다:-다/말", "라고:라고/조"], ["말:말|했:-하-,-였-|다:-다/말"]] },
+  { t: "누나는 “함께 가자”라고 말했다", st: {"k": "안은", "types": ["인용절"], "parts": [1, 2], "why": "'함께 가자'를 그대로 옮긴 직접 인용절입니다."}, tense: 과거, why: "서술어 '말했다'에 과거 '-였-'이 있습니다. 인용절 안의 '-자'는 청유형 종결 어미입니다.", exam: true, comp: {"말했다": "말하다"}, quo: {"k": "직접 인용", "why": "따옴표와 조사 '라고'가 쓰인 직접 인용입니다. 간접 인용이면 '함께 가자고'가 됩니다."}, e: [["누나:누나/명", "는:는/조"], ["함께:함께/부"], ["가:가-|자:-자/말", "라고:라고/조"], ["말:말|했:-하-,-였-|다:-다/말"]] },
+  { t: "아이는 배가 고프다고 말했다", st: {"k": "안은", "types": ["인용절"], "parts": [1, 2], "why": "'배가 고프다'에 인용격 조사 '고'가 붙은 간접 인용절입니다."}, tense: 과거, why: "서술어 '말했다'에 과거 '-였-'이 있습니다.", exam: true, comp: {"말했다": "말하다"}, e: [["아이:아이", "는:는/조"], ["배:배/몸", "가:가/조"], ["고프:고프-/형|다:-다/말", "고:고/조"], ["말:말|했:-하-,-였-|다:-다/말"]] },
   { t: "아이가 눈을 감은 채로 노래를 한다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'눈을 감은'이 의존 명사 '채'를 꾸미는 관형절입니다."}, tense: 현재, why: "서술어 '한다'의 '한'은 어간 '하-'에 현재 '-ㄴ-'이 받침으로 붙은 것입니다. '채'는 의존 명사입니다.", exam: true, e: [["아이:아이","가:가/조"],["눈:눈","을:을/조"],["감:감-|은:-은/관"],["채:채/명","로:로/조"],["노래:노래","를:를/조"],["한:하-/동,-ㄴ-/현|다:-다/말"]] },
 ];
 
@@ -2595,7 +2738,7 @@ function deriveExpr(sp, eojeols, words, morphs) {
         hon = { has: types.size > 0, types: [...types], means: [...means], why: types.size ? `높임 표현: ${[...types].join(', ')} (${[...means].join(', ')})` : '높임 표현이 없는 문장입니다. 주체·객체·듣는 이 누구도 높이지 않았습니다.' };
     }
     // 동작상
-    const asp = sp.asp || { k: '표현 없음', parts: [], why: '진행(-고 있다, -면서)이나 완료(-어 있다, -어 버리다, -고서)를 나타내는 동작상 표현이 없습니다.' };
+    const asp = sp.asp || { k: '표현 없음', parts: [], why: "동작상은 보조 용언 구성(-고 있다, -어 있다, -어 버리다)이나 연결 어미(-면서, -고서)로 나타냅니다. 이 문장에는 그런 표현이 없습니다. '-었-/-았-'은 과거 시제 선어말 어미이지 완료상 표현으로 세지 않습니다(교과서 기준)." };
     // 피동·사동
     let vc = sp.vc;
     if (!vc) {
@@ -2656,30 +2799,62 @@ let SPROBLEMS = [];
 /* ---- 상태 ---- */
 let S = null, sIdx = 0, sPhase = 1, sWrong = 0, sRevealed = false, sPoints = null;
 let s1 = null, s2 = null, s3 = null, s4 = null, s5 = null, s5b = null, s6 = null, s7 = null;
+/* ---- 단계 선택 · 문장 필터 ---- */
+let sPhasesOn = new Set([1, 2, 3, 4, 5, 6, 7, 8]), sFilter = 'all';
+try { const v = JSON.parse(localStorage.getItem('wf_sphases') || 'null'); if (Array.isArray(v) && v.length) sPhasesOn = new Set(v.filter(n => n >= 1 && n <= 8)); } catch (e) {}
+try { sFilter = localStorage.getItem('wf_sfilter') || 'all'; } catch (e) {}
+const sPhaseOn = n => (typeof sTut !== 'undefined' && sTut) || sPhasesOn.has(n);
+function sPool() {
+    const f = sFilter, all = SPROBLEMS.map((p, i) => i);
+    const test = p => f === 'all' ? true : f === 'exam' ? p.exam : f === 'poem' ? !!p.src : f === '홑' ? p.st.k === '홑' : f === '안은' ? p.st.k === '안은' : f === '이어진' ? p.st.k === '이어진' : f === 'vc' ? p.vc.k !== '없음' : f === 'hon' ? p.hon.has : f === 'neg' ? p.neg.k !== '없음' : f === 'quo' ? p.quo.k !== '없음' : f === 'asp' ? p.asp.k !== '표현 없음' : f === 'end' ? p.end.k !== '평서문' : true;
+    const pool = all.filter(i => test(SPROBLEMS[i]));
+    return pool.length ? pool : all;
+}
+function onSFilterChange(v) { sFilter = v; try { localStorage.setItem('wf_sfilter', v); } catch (e) {} const pool = sPool(); loadSentence(pool.includes(sIdx) ? sIdx : pool[0]); }
+function sGoto(n) {
+    let k = n; while (k <= 8 && !sPhaseOn(k)) k++;
+    if (k > 8) { sFinish(); return; }
+    if (k === 8) { s7Start(); return; }
+    sPhase = k; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0);
+}
+function openPhaseModal() {
+    document.getElementById('phase-modal-list').innerHTML = SPHASES.map((name, i) => `<label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 cursor-pointer"><input type="checkbox" data-phase="${i + 1}" ${sPhasesOn.has(i + 1) ? 'checked' : ''} class="accent-indigo-500"> ${name}</label>`).join('');
+    document.getElementById('phase-modal').classList.remove('hidden');
+}
+function closePhaseModal() { document.getElementById('phase-modal').classList.add('hidden'); }
+function setPhasesAll(on) { document.querySelectorAll('#phase-modal-list input').forEach(c => c.checked = on); }
+function applyPhaseModal() {
+    const on = [...document.querySelectorAll('#phase-modal-list input')].filter(c => c.checked).map(c => parseInt(c.dataset.phase));
+    if (!on.length) { playSound('wrong'); return; }
+    sPhasesOn = new Set(on); try { localStorage.setItem('wf_sphases', JSON.stringify(on)); } catch (e) {}
+    closePhaseModal(); playSound('click'); loadSentence(sIdx);
+}
 const SPHASES = ["1. 어절 → 단어", "2. 단어 → 형태소", "3. 형태소 종류", "4. 형태소 성격", "5. 시제·동작상·종결", "6. 높임·피동사동·인용·부정", "7. 단어 형성", "8. 문장의 짜임"];
 
 function loadSentence(i) {
+    clearTimeout(_autoTimer); closeBlockSheet();
     sIdx = i; S = SPROBLEMS[i]; sPhase = 1; sWrong = 0; sRevealed = false; sPoints = null; currentPhase = 99;
     s1 = { cuts: S.eojeols.map(() => new Set()), ok: new Set(), bad: new Set() };
-    s2 = { cuts: S.words.map(() => new Set()), fused: S.words.map(() => new Set()), ok: new Set(), bad: new Set(), queue: [], cur: null };
+    s2 = { cuts: S.words.map(() => new Set()), fused: S.words.map(() => new Set()), ok: new Set(), bad: new Set(), queue: [], cur: null, tries: S.words.map(() => 0) };
     s3 = { assigned: new Array(S.morphs.length).fill(null), active: 0, ok: new Set(), bad: new Set(), wi: 0 };
-    s4 = { auto: new Array(S.morphs.length).fill(null), mean: new Array(S.morphs.length).fill(null), okA: new Set(), okM: new Set(), badA: new Set(), badM: new Set(), done: false };
+    s4 = { auto: new Array(S.morphs.length).fill(null), mean: new Array(S.morphs.length).fill(null), okA: new Set(), okM: new Set(), badA: new Set(), badM: new Set(), done: false, mi: 0 };
     s5 = { tense: null, asp: null, end: null, q: null, done: false, bad: new Set() };
     s5b = { hon: { has: null, types: new Set(), means: new Set(), ok: false }, vc: { k: null, how: null, dir: null, parts: new Set(), ok: false }, quo: { k: null, ok: false }, neg: { k: null, t: null, ok: false } };
     s6 = { picked: new Set(), ok: false, queue: [], cur: null, path: [], sub: null, done: [] };
     s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, linkOk: false, done: false };
     const sel = document.getElementById('word-selector');
-    sel.innerHTML = SPROBLEMS.map((p, k) => `<option value="${k}">${k + 1}. ${p.text}</option>`).join('');
+    sel.innerHTML = sPool().map(k => `<option value="${k}">${k + 1}. ${SPROBLEMS[k].text}</option>`).join('');
     sel.value = i;
+    if (!sPhaseOn(1)) { sGoto(1); return; }
     sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0);
 }
-function sNext() { loadSentence((sIdx + 1) % SPROBLEMS.length); }
-function sPrev() { loadSentence((sIdx - 1 + SPROBLEMS.length) % SPROBLEMS.length); }
+function sNext() { const p = sPool(), k = p.indexOf(sIdx); loadSentence(p[(k + 1) % p.length]); }
+function sPrev() { const p = sPool(), k = p.indexOf(sIdx); loadSentence(p[(k - 1 + p.length) % p.length]); }
 function sMarkWrong() { sWrong++; playSound('wrong'); }
 
 function sRenderPhaseBar() {
-    const st = n => n === sPhase ? 'cur' : n < sPhase ? 'done' : 'todo';
-    const dot = n => { const k = st(n); return k === 'cur' ? 'bg-indigo-600 text-white' : k === 'done' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'; };
+    const st = n => !sPhaseOn(n) ? 'off' : n === sPhase ? 'cur' : n < sPhase ? 'done' : 'todo';
+    const dot = n => { const k = st(n); return k === 'cur' ? 'bg-indigo-600 text-white' : k === 'done' ? 'bg-emerald-600 text-white' : k === 'off' ? 'bg-slate-900 text-slate-600 line-through' : 'bg-slate-800 text-slate-400'; };
     const full = SPHASES.map((name, i) => { const n = i + 1, k = st(n); const cls = k === 'cur' ? 'font-bold text-indigo-400' : k === 'done' ? 'font-semibold text-emerald-400' : 'font-semibold text-slate-500'; return `<div class="flex items-center gap-1.5 whitespace-nowrap ${cls}"><span class="w-6 h-6 rounded-full ${dot(n)} flex items-center justify-center text-xs">${k === 'done' ? '✓' : n}</span><span class="text-xs">${name.replace(/^\d\. /, '')}</span></div>`; }).join('<span class="flex-1 h-px bg-slate-700 mx-1"></span>');
     const curName = sPhase <= 8 ? SPHASES[sPhase - 1] : '완료 · 요약';
     const mobile = `<div class="flex items-center gap-1">${SPHASES.map((_, i) => `<span class="w-6 h-6 rounded-full ${dot(i + 1)} flex items-center justify-center text-[10px] font-bold">${st(i + 1) === 'done' ? '✓' : i + 1}</span>`).join('')}</div><div class="font-bold text-indigo-400 text-xs truncate">${curName}</div>`;
@@ -2722,7 +2897,7 @@ const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
 function s1Validate() {
     const wrong = [];
     S.eojeols.forEach((e, ei) => { if (s1.ok.has(ei)) return; if (sameSet(s1.cuts[ei], expectedCuts(e.words))) s1.ok.add(ei); else { s1.bad.add(ei); wrong.push(ei); } });
-    if (!wrong.length) { playSound('correct'); sPhase = 2; sRenderPhaseBar(); sRenderApp(); return; }
+    if (!wrong.length) { playSound('correct'); sGoto(2); return; }
     sMarkWrong(); sRenderApp();
     showExplanationModal(`빨간 어절 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(ei => { const e = S.eojeols[ei]; const j = e.words.filter(w => w.isJosa); return `• '${e.text}' → ${e.words.length === 1 ? `조사가 없어 한 단어입니다. ${e.words[0].hasStem ? '용언은 어간·어미를 합쳐 한 단어로 봅니다.' : ''}` : `${e.words.map(w => `'${w.text}'`).join(' + ')} (${j.map(w => `${eunNeun(w.text)} 조사`).join(', ')})`}`; }).join('\n'));
 }
@@ -2738,6 +2913,9 @@ function sRender2() {
         const toggles = s2.ok.has(wi) ? '' : `<div class="flex justify-center gap-1 flex-wrap">${ranges.map(([a, b]) => `<button onclick="s2Fuse(${wi},${a})" class="text-[10px] px-2 py-0.5 rounded-full border ${s2.fused[wi].has(a) ? 'bg-sky-600 border-sky-400 text-white' : 'border-slate-600 text-slate-400'}" title="이 덩어리 글자 안에 형태소가 둘 겹쳐 있음">${w.text.slice(a, b)} 겹침</button>`).join('')}</div>`;
         body += `<div class="bg-slate-950 border-2 ${state} rounded-xl p-3 flex flex-col items-center gap-2"><div class="text-[10px] text-slate-500">단어 ${wi + 1}</div><div class="flex items-center gap-0.5">${sChips(w.text, s2.cuts[wi], `s2Gap.bind(null,${wi})`)}</div>${toggles}${s2.ok.has(wi) ? `<div class="text-[11px] text-emerald-300 font-bold">${w.morphs.map(m => m.form).join(' + ')}</div>` : ''}</div>`;
     });
+    let coach = '';
+    try { if (!localStorage.getItem('wf_coach_fuse')) coach = `<div class="w-full bg-sky-950/40 border border-sky-500/50 rounded-xl p-3 text-xs text-sky-100 leading-relaxed"><div class="flex items-start justify-between gap-2"><b class="text-sky-300"><i class="fa-solid fa-lightbulb mr-1"></i> '겹침'이 뭐예요?</b><button onclick="try{localStorage.setItem('wf_coach_fuse','1')}catch(e){} sRenderApp();" class="text-sky-300/80 hover:text-white text-base leading-none px-1">×</button></div>한 글자 안에 형태소가 둘 들어 있을 때가 있어요. <b>잤</b> = 자 + 았, <b>잠</b> = 자 + ㅁ, <b>큰</b> = 크 + ㄴ, <b>싸움</b> = 싸우 + ㅁ. 이런 덩어리는 가위로 못 자르니, 자를 만큼 자른 뒤 그 덩어리의 <b>'겹침'</b> 단추를 켜 주세요. 검증하면 그 덩어리를 어떻게 나누는지 따로 물어봅니다.</div>`; } catch (e) {}
+    body = coach + body;
     body += `</div>` + primaryBtn('s2Validate()', '형태소 나누기 검증') + `<p class="hint text-[11px] text-slate-500 text-center">가위로 글자 사이를 자르고, '렸'(-리-+-었-)이나 '큰'(크-+-ㄴ)처럼 한 글자 안에 형태소가 둘 겹쳐 있으면 그 덩어리의 '겹침'을 켜세요. '싸움'(싸우-+-ㅁ)처럼 두 글자 덩어리 안에 겹쳐 있으면 '싸움 겹침'을 켜거나, '싸|움'으로 자르고 '움 겹침'을 켜도 됩니다. 어간·선어말 어미·어말 어미·접사를 모두 따로 떼야 합니다.</p>`;
     return card("2단계: 단어를 형태소로", "fa-cubes", "각 단어를 뜻을 가진 가장 작은 단위로 나누세요. 조사 한 글자짜리는 그대로 두면 됩니다.", body, 'max-w-3xl');
 }
@@ -2760,14 +2938,21 @@ function s2Validate() {
     });
     if (wrong.length) {
         sMarkWrong(); sRenderApp();
-        showExplanationModal(`빨간 단어 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(wi => { const w = S.words[wi]; const fused = w.chunks.filter(c => c.morphs.length > 1); return `• '${w.text}' → ${w.chunks.map(c => c.text).join(' | ')}${fused.length ? `  (겹침: ${fused.map(c => `'${c.text}' = ${c.morphs.map(m => m.form).join(' + ')}`).join(', ')})` : ''}`; }).join('\n'));
+        showExplanationModal(`빨간 단어 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(wi => {
+            const w = S.words[wi]; s2.tries[wi]++;
+            const exp = expectedCuts(w.chunks); let st = 0; const expFused = new Set(); w.chunks.forEach(c => { if (c.morphs.length > 1) expFused.add(st); st += c.text.length; });
+            const fused = w.chunks.filter(c => c.morphs.length > 1);
+            if (s2.tries[wi] >= 2) return `• '${w.text}' → ${w.chunks.map(c => c.text).join(' | ')}${fused.length ? `  (겹침: ${fused.map(c => `'${c.text}' = ${c.morphs.map(mm => mm.form).join(' + ')}`).join(', ')})` : ''}`;
+            if (sameSet(s2.cuts[wi], exp)) return `• '${w.text}': 자르는 자리는 맞아요. ${expFused.size ? `글자 안에 형태소 둘이 겹친 덩어리가 ${expFused.size}개 있어요. 그 덩어리 아래의 '겹침'을 켜세요 (예: '잤' = 자 + 았, '잠' = 자 + ㅁ, '큰' = 크 + ㄴ).` : `겹침이 켜진 덩어리가 있는데, 이 단어에는 글자 안에 겹친 형태소가 없어요. '겹침'을 끄세요.`}`;
+            return `• '${w.text}': 형태소가 ${w.morphs.length}개예요. 자르는 자리를 다시 보세요${expFused.size ? ' (한 글자 안에 두 형태소가 겹친 덩어리도 있어요)' : ''}. 한 번 더 틀리면 정답을 보여 드려요.`;
+        }).join('\n'));
         return;
     }
     playSound('correct'); s2Advance();
 }
 function s2Advance() {
     if (s2.queue.length) { const q = s2.queue.shift(); const forms = q.chunk.morphs.map(m => m.form); s2.cur = { ...q, ...innerSplitOptions(q.chunk.text, forms), forms }; sRenderApp(); return; }
-    s2.cur = null; sPhase = 3; sRenderPhaseBar(); sRenderApp();
+    s2.cur = null; sGoto(3);
 }
 function sRenderInner() {
     const c = s2.cur;
@@ -2794,20 +2979,20 @@ function sRender3() {
         const mm = S.morphs[i], val = s3.assigned[i], state = s3.ok.has(i) ? 'ok' : s3.bad.has(i) ? 'bad' : val ? 'filled' : '', active = i === s3.active && !s3.ok.has(i) ? 'active' : '';
         slots += `<div class="bg-slate-950 border border-slate-800 p-2 rounded-xl flex flex-col items-center gap-1.5 w-[120px]"><div class="text-base font-black text-amber-300 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-700 w-full text-center">${stripHyphen(mm.form)}</div><div onclick="s3Slot(${i})" class="slot ${state} ${active} w-full rounded-lg flex items-center justify-center p-1 text-[11px] font-bold ${state === 'ok' ? 'text-emerald-200' : state === 'bad' ? 'text-rose-200' : 'text-white'}" style="min-height:34px">${val || '<span class="text-slate-500 font-medium">배치</span>'}</div></div>`;
     }
-    slots += `</div><div class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3"><div class="text-xs font-bold text-slate-400 mb-2"><i class="fa-solid fa-cubes"></i> 품사·문법 요소 블록:</div><div class="space-y-2">${SCAT_GROUPS.map(g => `<div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] font-bold text-slate-500 w-20 shrink-0 text-right pr-1">${g.title}</span>${g.cats.map(c => `<button onclick="s3Assign(${SCATS.indexOf(c)})" class="block-chip bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-md transition">${c}</button>`).join('')}</div>`).join('')}</div></div>` + primaryBtn('s3Validate()', `'${w.text}' 형태소 종류 검증`);
+    slots += `</div><button onclick="if(s3.active===null){const [a0,b0]=s3Range(); for(let x=a0;x<b0;x++) if(s3.assigned[x]===null){s3.active=x;break;}} openBlockSheet();" class="sm:hidden w-full py-3 bg-indigo-600/90 text-white rounded-xl text-sm font-bold"><i class="fa-solid fa-cubes mr-1"></i> 블록 고르기</button><div class="hidden sm:block w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3"><div class="text-xs font-bold text-slate-400 mb-2"><i class="fa-solid fa-cubes"></i> 품사·문법 요소 블록:</div><div class="space-y-2">${SCAT_GROUPS.map(g => `<div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] font-bold text-slate-500 w-20 shrink-0 text-right pr-1">${g.title}</span>${g.cats.map(c => `<button onclick="s3Assign(${SCATS.indexOf(c)})" class="block-chip bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 px-2.5 py-1 rounded-xl text-[11px] font-bold shadow-md transition">${c}</button>`).join('')}</div>`).join('')}</div></div>` + primaryBtn('s3Validate()', `'${w.text}' 형태소 종류 검증`);
     return card("3단계: 형태소 종류", "fa-puzzle-piece", "단어를 하나씩 봅니다. 이 단어의 형태소가 어떤 품사·문법 요소인지 고르세요. 조사는 격 조사(주격·목적격·보격·관형격·부사격·서술격·호격)·보조사·접속 조사로, 어미는 선어말 어미(시제·높임)와 어말 어미(종결·연결·전성)로 나눠 고르세요.", slots, 'max-w-3xl');
 }
-window.s3Slot = i => { if (s3.ok.has(i)) return; if (s3.assigned[i] !== null) { s3.assigned[i] = null; s3.bad.delete(i); } s3.active = i; playSound('click'); sRenderApp(); };
-window.s3Assign = k => { const [a, b] = s3Range(); let i = s3.active; if (i === null || i < a || i >= b || s3.ok.has(i)) { i = -1; for (let x = a; x < b; x++) if (s3.assigned[x] === null && !s3.ok.has(x)) { i = x; break; } if (i === -1) return; } s3.assigned[i] = SCATS[k]; s3.bad.delete(i); let n = null; for (let x = a; x < b; x++) if (s3.assigned[x] === null && !s3.ok.has(x)) { n = x; break; } s3.active = n; playSound('click'); sRenderApp(); };
+window.s3Slot = i => { if (s3.ok.has(i)) return; if (s3.assigned[i] !== null) { s3.assigned[i] = null; s3.bad.delete(i); } s3.active = i; playSound('click'); sRenderApp(); if (isMobile()) openBlockSheet(); };
+window.s3Assign = k => { const [a, b] = s3Range(); let i = s3.active; if (i === null || i < a || i >= b || s3.ok.has(i)) { i = -1; for (let x = a; x < b; x++) if (s3.assigned[x] === null && !s3.ok.has(x)) { i = x; break; } if (i === -1) return; } s3.assigned[i] = SCATS[k]; s3.bad.delete(i); let n = null; for (let x = a; x < b; x++) if (s3.assigned[x] === null && !s3.ok.has(x)) { n = x; break; } s3.active = n; playSound('click'); sRenderApp(); refreshBlockSheet(); if (n === null) autoLater(s3Validate); };
 function s3Validate() {
     const [a, b] = s3Range();
     for (let i = a; i < b; i++) if (s3.assigned[i] === null) { playSound('wrong'); showExplanationModal('이 단어의 형태소에 블록을 모두 배치해 주세요.'); return; }
     const wrong = [];
     for (let i = a; i < b; i++) { const mm = S.morphs[i]; if (s3.assigned[i] === mm.cat) s3.ok.add(i); else { s3.bad.add(i); wrong.push(i); } }
     if (!wrong.length) {
-        playSound('correct'); s3.wi++;
-        if (s3.wi >= S.words.length) { sPhase = 4; sRenderPhaseBar(); sRenderApp(); return; }
-        s3.active = S.words[s3.wi].mi[0]; sRenderApp(); return;
+        playSound('correct'); s3.wi++; closeBlockSheet();
+        if (s3.wi >= S.words.length) { sGoto(4); return; }
+        s3.active = S.words[s3.wi].mi[0]; sRenderApp(); if (isMobile()) openBlockSheet(); return;
     }
     sMarkWrong(); s3.active = wrong[0]; sRenderApp();
     showExplanationModal(`빨간 슬롯 ${wrong.length}개가 맞지 않습니다.\n\n` + wrong.map(i => { const mm = S.morphs[i], c = s3.assigned[i]; return `• '${mm.form}' → ${c}?  ${SCAT[c].test(mm.text)}`; }).join('\n\n'));
@@ -2815,45 +3000,59 @@ function s3Validate() {
 
 /* ---- 4단계: 형태소 성격 + 개수 ---- */
 function sRender4() {
-    const btn = (kind, i, label, val, bad, ok) => { const on = val === label; const cls = ok && on ? 'ok' : bad && on ? 'bad' : on ? 'on' : ''; return `<button ${ok ? 'disabled' : ''} onclick="s4Pick('${kind}',${i},'${label}')" class="pick ${cls} flex-1 px-1 py-1.5 rounded-lg text-[11px] font-bold border border-slate-600 bg-slate-800 text-slate-200 whitespace-nowrap">${label.replace(' 형태소', '')}</button>`; };
-    let body = `<div class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">`;
-    S.morphs.forEach((m, i) => {
-        body += `<div class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col gap-1.5"><div class="flex items-baseline gap-2"><span class="font-black text-amber-300 text-lg">${stripHyphen(m.form)}</span><span class="text-[10px] text-slate-500">${m.cat}</span></div><div class="flex gap-1">${btn('auto', i, '자립 형태소', s4.auto[i], s4.badA.has(i), s4.okA.has(i))}${btn('auto', i, '의존 형태소', s4.auto[i], s4.badA.has(i), s4.okA.has(i))}</div><div class="flex gap-1">${btn('mean', i, '실질 형태소', s4.mean[i], s4.badM.has(i), s4.okM.has(i))}${btn('mean', i, '형식 형태소', s4.mean[i], s4.badM.has(i), s4.okM.has(i))}</div></div>`;
-    });
-    body += `</div>`;
-    if (s4.done) body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-center text-sm text-emerald-200">형태소 ${S.morphs.length}개 = 자립 <b>${S.counts.auto}</b> + 의존 <b>${S.counts.dep}</b> = 실질 <b>${S.counts.real}</b> + 형식 <b>${S.counts.form}</b></div>` + primaryBtn('s4Next()', '다음 단계 (시제·피동·사동)');
-    else body += primaryBtn('s4Validate()', '형태소 성격 검증');
-    return card("4단계: 형태소 성격", "fa-tags", "자립/의존, 실질/형식을 고르세요. 시험에서는 이 개수를 세는 문제가 자주 나옵니다.", body, 'max-w-3xl');
+    const btn = (kind, i, label, val, bad, ok) => { const on = val === label; const cls = ok && on ? 'ok' : bad && on ? 'bad' : on ? 'on' : ''; return `<button ${ok ? 'disabled' : ''} onclick="s4Pick('${kind}',${i},'${label}')" class="pick ${cls} flex-1 px-3 py-3 rounded-lg text-sm font-bold border border-slate-600 bg-slate-800 text-slate-200 whitespace-nowrap">${label}</button>`; };
+    const n = S.morphs.length;
+    let body = `<div class="w-full flex flex-col items-center gap-1 mb-1"><div class="text-[11px] text-slate-400">형태소 ${Math.min(s4.mi + 1, n)} / ${n}</div><div class="flex flex-wrap justify-center gap-1">${S.morphs.map((x, k) => `<span class="px-2 py-0.5 rounded-lg text-xs font-bold ${k < s4.mi ? 'bg-emerald-900/60 text-emerald-200' : k === s4.mi ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-500'}">${stripHyphen(x.form)}</span>`).join('')}</div></div>`;
+    if (!s4.done) {
+        const i = s4.mi, mm = S.morphs[i];
+        const w = S.words.find(x => i >= x.mi[0] && i < x.mi[1]);
+        body += `<div class="w-full max-w-md bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+            <div class="text-center"><span class="font-black text-amber-300 text-3xl">${stripHyphen(mm.form)}</span><div class="text-xs text-slate-400 mt-1">${mm.cat}${w ? ` · 단어 '${w.text}'` : ''}</div></div>
+            <div><div class="text-[11px] text-slate-400 mb-1">자립성: 문장에서 홀로 쓰일 수 있는가?</div><div class="flex gap-2">${btn('auto', i, '자립 형태소', s4.auto[i], s4.badA.has(i), s4.okA.has(i))}${btn('auto', i, '의존 형태소', s4.auto[i], s4.badA.has(i), s4.okA.has(i))}</div></div>
+            <div><div class="text-[11px] text-slate-400 mb-1">의미: 구체적인 뜻이 있는가, 문법적 기능만 하는가?</div><div class="flex gap-2">${btn('mean', i, '실질 형태소', s4.mean[i], s4.badM.has(i), s4.okM.has(i))}${btn('mean', i, '형식 형태소', s4.mean[i], s4.badM.has(i), s4.okM.has(i))}</div></div>
+        </div>` + primaryBtn('s4Validate()', `'${stripHyphen(mm.form)}' 성격 검증`) + `<p class="hint text-[11px] text-slate-500 text-center">체언·관형사·부사·감탄사·의존 명사는 자립, 어간·어미·조사·접사는 의존. 체언·용언 어간·수식언은 실질, 조사·어미·접사는 형식.</p>`;
+    } else {
+        body += `<div class="w-full overflow-x-auto"><table class="w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-slate-400"><th class="text-left px-2">형태소</th><th class="px-2">종류</th><th class="px-2">자립성</th><th class="px-2">의미</th></tr></thead><tbody>${S.morphs.map(x => `<tr class="bg-slate-950"><td class="px-2 py-1 font-black text-amber-300">${x.form}</td><td class="px-2 text-center text-slate-300">${x.cat}</td><td class="px-2 text-center ${x.auto === '자립 형태소' ? 'text-emerald-300' : 'text-sky-300'}">${x.auto.replace(' 형태소', '')}</td><td class="px-2 text-center ${x.mean === '실질 형태소' ? 'text-emerald-300' : 'text-sky-300'}">${x.mean.replace(' 형태소', '')}</td></tr>`).join('')}</tbody></table></div>`;
+        body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-center text-sm text-emerald-200">형태소 ${n}개 = 자립 <b>${S.counts.auto}</b> + 의존 <b>${S.counts.dep}</b> = 실질 <b>${S.counts.real}</b> + 형식 <b>${S.counts.form}</b></div>` + primaryBtn('s4Next()', '다음 단계 (시제·동작상·종결)');
+    }
+    return card("4단계: 형태소 성격", "fa-tags", "형태소를 하나씩 봅니다. 자립/의존, 실질/형식을 고르세요. 시험에서는 이 개수를 세는 문제가 자주 나옵니다.", body, 'max-w-3xl');
 }
-window.s4Pick = (kind, i, label) => { if (kind === 'auto') { if (s4.okA.has(i)) return; s4.auto[i] = label; s4.badA.delete(i); } else { if (s4.okM.has(i)) return; s4.mean[i] = label; s4.badM.delete(i); } playSound('click'); sRenderApp(); };
+window.s4Pick = (kind, i, label) => { if (kind === 'auto') { if (s4.okA.has(i)) return; s4.auto[i] = label; s4.badA.delete(i); } else { if (s4.okM.has(i)) return; s4.mean[i] = label; s4.badM.delete(i); } playSound('click'); sRenderApp(); if (s4.auto[i] !== null && s4.mean[i] !== null) autoLater(s4Validate); };
 function s4Validate() {
-    if (s4.auto.includes(null) || s4.mean.includes(null)) { playSound('wrong'); showExplanationModal('모든 형태소의 자립성과 의미 성격을 골라 주세요.'); return; }
-    let wa = 0, wm = 0;
-    S.morphs.forEach((m, i) => { if (s4.auto[i] === m.auto) s4.okA.add(i); else { s4.badA.add(i); wa++; } if (s4.mean[i] === m.mean) s4.okM.add(i); else { s4.badM.add(i); wm++; } });
-    if (!wa && !wm) { playSound('correct'); s4.done = true; sRenderApp(); return; }
+    const i = s4.mi, mm = S.morphs[i];
+    if (s4.auto[i] === null || s4.mean[i] === null) { playSound('wrong'); showExplanationModal('자립성과 의미 성격을 둘 다 골라 주세요.'); return; }
+    const okA = s4.auto[i] === mm.auto, okM = s4.mean[i] === mm.mean;
+    if (okA) s4.okA.add(i); else s4.badA.add(i);
+    if (okM) s4.okM.add(i); else s4.badM.add(i);
+    if (okA && okM) {
+        playSound('correct'); s4.mi++;
+        if (s4.mi >= S.morphs.length) { s4.done = true; autoLater(s4Next, 1500); }
+        sRenderApp(); return;
+    }
     sMarkWrong(); sRenderApp();
     const tips = [];
-    if (wa) tips.push(`[자립성 ${wa}개] 체언·관형사·부사·의존 명사('채')는 자립, 어간·어미·조사·접사는 의존이에요. 조사는 단어이지만 형태소로는 의존입니다.`);
-    if (wm) tips.push(`[의미 ${wm}개] 체언·용언 어간·관형사·부사는 실질, 조사·어미·접사(피동·사동 접미사 포함)는 형식이에요.`);
+    if (!okA) tips.push(`[자립성] '${mm.form}'(${mm.cat})은 ${mm.auto}입니다. 체언·관형사·부사·감탄사·의존 명사('채', '것')는 자립, 어간·어미·조사·접사는 의존이에요. 조사는 단어이지만 형태소로는 의존입니다.`);
+    if (!okM) tips.push(`[의미] '${mm.form}'(${mm.cat})은 ${mm.mean}입니다. 체언·용언 어간(보조 용언 포함)·관형사·부사는 실질, 조사·어미·접사(피동·사동 접미사 포함)는 형식이에요.`);
     showExplanationModal(tips.join('\n\n'));
 }
-window.s4Next = () => { sPhase = 5; sRenderPhaseBar(); sRenderApp(); };
+window.s4Next = () => { sGoto(5); };
 
 /* ---- 5단계: 시제 · 피동/사동 ---- */
 function sRender5() {
     const opt = (sel, label, onclick, bad) => `<button ${s5.done ? 'disabled' : ''} onclick="${onclick}" class="pick ${s5.done && sel === label ? 'ok' : bad && sel === label ? 'bad' : sel === label ? 'on' : ''} px-3 py-2 rounded-lg text-xs font-bold border border-slate-600 bg-slate-800 text-slate-200">${label}</button>`;
     const row = (title, items, sel, fn, bad) => `<div class="w-full bg-slate-950 border ${bad ? 'border-rose-500/60' : 'border-slate-800'} rounded-xl p-3 space-y-2"><div class="text-xs font-bold text-slate-300">${title}</div><div class="flex flex-wrap gap-2">${items.map(t => opt(sel, t, `${fn}('${t}')`, bad)).join('')}</div></div>`;
     let body = row('시제는?', ['과거', '현재', '미래'], s5.tense, 's5Tense', s5.bad.has('tense'));
-    body += row('동작상은? (진행·완료를 나타내는 표현이 있는가)', ['진행상', '완료상', '표현 없음'], s5.asp, 's5Asp', s5.bad.has('asp'));
+    body += row("동작상은? (보조 용언·연결 어미로 진행·완료를 나타내는가 — '-었-'은 시제일 뿐 동작상이 아님)", ['진행상', '완료상', '표현 없음'], s5.asp, 's5Asp', s5.bad.has('asp'));
     body += row('종결 표현(문장의 종류)은?', ['평서문', '의문문', '명령문', '청유문', '감탄문'], s5.end, 's5End', s5.bad.has('end'));
     if (s5.end === '의문문') body += row('의문문의 종류는?', ['판정 의문문', '설명 의문문', '수사 의문문'], s5.q, 's5Q', s5.bad.has('q'));
     body += s5.done ? `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-xs text-emerald-200 space-y-1"><div>시제: ${S.tense} · ${S.why}</div><div>동작상: ${S.asp.k} · ${S.asp.why}</div><div>종결: ${S.end.k}${S.end.q ? ` (${S.end.q})` : ''} · ${S.end.why}</div></div>` + primaryBtn('s5Next()', '다음 단계 (높임·피동사동·인용·부정)') : primaryBtn('s5Validate()', '시제·동작상·종결 검증') + `<p class="hint text-[11px] text-slate-500 text-center">시제는 선어말 어미(-었-/-는-/-겠-)로, 동작상은 보조 용언(-고 있다·-어 있다·-어 버리다)이나 연결 어미(-면서·-고서)로, 종결 표현은 종결 어미로 판단합니다. 의문문은 예/아니요로 답하면 판정, 의문사가 있으면 설명, 답을 요구하지 않고 강조하면 수사 의문문입니다.</p>`;
     return card("5단계: 시제·동작상·종결 표현", "fa-clock", "시제, 동작상, 문장의 종류(종결 표현)를 고르세요.", body);
 }
-window.s5Tense = t => { if (s5.done) return; s5.tense = t; s5.bad.delete('tense'); playSound('click'); sRenderApp(); };
-window.s5Asp = t => { if (s5.done) return; s5.asp = t; s5.bad.delete('asp'); playSound('click'); sRenderApp(); };
-window.s5End = t => { if (s5.done) return; s5.end = t; s5.bad.delete('end'); if (t !== '의문문') s5.q = null; playSound('click'); sRenderApp(); };
-window.s5Q = t => { if (s5.done) return; s5.q = t; s5.bad.delete('q'); playSound('click'); sRenderApp(); };
+const s5AutoIf = () => { if (s5.tense && s5.asp && s5.end && (s5.end !== '의문문' || s5.q)) autoLater(s5Validate); };
+window.s5Tense = t => { if (s5.done) return; s5.tense = t; s5.bad.delete('tense'); playSound('click'); sRenderApp(); s5AutoIf(); };
+window.s5Asp = t => { if (s5.done) return; s5.asp = t; s5.bad.delete('asp'); playSound('click'); sRenderApp(); s5AutoIf(); };
+window.s5End = t => { if (s5.done) return; s5.end = t; s5.bad.delete('end'); if (t !== '의문문') s5.q = null; playSound('click'); sRenderApp(); s5AutoIf(); };
+window.s5Q = t => { if (s5.done) return; s5.q = t; s5.bad.delete('q'); playSound('click'); sRenderApp(); s5AutoIf(); };
 function s5Validate() {
     if (!s5.tense || !s5.asp || !s5.end || (s5.end === '의문문' && !s5.q)) { playSound('wrong'); showExplanationModal('시제, 동작상, 종결 표현을 모두 골라 주세요.'); return; }
     const msgs = [];
@@ -2861,10 +3060,10 @@ function s5Validate() {
     if (s5.asp !== S.asp.k) { s5.bad.add('asp'); msgs.push(`동작상: ${S.asp.k}. ${S.asp.why}`); }
     if (s5.end !== S.end.k) { s5.bad.add('end'); msgs.push(`종결 표현: ${S.end.k}. ${S.end.why}`); }
     else if (S.end.k === '의문문' && s5.q !== S.end.q) { s5.bad.add('q'); msgs.push(`의문문의 종류: ${S.end.q}. ${S.end.why}`); }
-    if (!msgs.length) { playSound('correct'); s5.done = true; sRenderApp(); return; }
+    if (!msgs.length) { playSound('correct'); s5.done = true; sRenderApp(); autoLater(s5Next, 1200); return; }
     sMarkWrong(); sRenderApp(); showExplanationModal(msgs.join('\n\n'));
 }
-window.s5Next = () => { sPhase = 6; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0); };
+window.s5Next = () => { sGoto(6); };
 
 /* ---- 6단계: 높임 · 피동사동 · 인용 · 부정 ---- */
 const HON_TYPES = ['주체 높임', '객체 높임', '상대 높임'], HON_MEANS = ['높임 선어말 어미', '높임 조사', '높임 특수 어휘', '높임 종결 어미'];
@@ -2877,36 +3076,44 @@ function sRender5b() {
     let h = sub('높임 표현이 있는가?', ['없음', '있음'].map(t => pick(b.hon.has, t, `s5bHon('has','${t}')`, b.hon.ok, b.hon.bad, false)).join(''));
     if (b.hon.has === '있음') { h += sub('높임의 종류 (모두 고르기)', HON_TYPES.map(t => pick(b.hon.types, t, `s5bHon('type','${t}')`, b.hon.ok, b.hon.bad, true)).join('')); h += sub('실현 방식 (모두 고르기)', HON_MEANS.map(t => pick(b.hon.means, t, `s5bHon('mean','${t}')`, b.hon.ok, b.hon.bad, true)).join('')); }
     if (b.hon.ok) h += `<div class="text-[11px] text-emerald-200">${S.hon.why}</div>`;
-    let body = box('① 높임 표현', h, b.hon.ok, 's5bValidateHon()', '높임');
+    const order = [['hon', '① 높임 표현'], ['vc', '② 피동·사동'], ['quo', '③ 인용 표현'], ['neg', '④ 부정 표현']];
+    const firstOpen = order.find(([k]) => !b[k].ok);
+    const summaryOf = k => k === 'hon' ? (S.hon.has ? `있음 · ${S.hon.types.join(', ')} · ${S.hon.means.join(', ')}` : '없음') : k === 'vc' ? `${S.vc.k}${S.vc.how ? ' · ' + S.vc.how : ''}${S.vc.dir ? ' · ' + S.vc.dir : ''}` : k === 'quo' ? S.quo.k : `${S.neg.k}${S.neg.t ? ' · ' + S.neg.t : ''}`;
+    const doneLine = (title, k) => `<div class="w-full bg-slate-950 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs flex items-center justify-between gap-2"><span class="font-black text-emerald-300">${title}</span><span class="text-emerald-200 text-right">${summaryOf(k)}</span></div>`;
+    const todoLine = title => `<div class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-500 font-bold">${title}</div>`;
+    const inner = { hon: h };
+    let body = '';
     // 피동·사동
     let v = sub('피동·사동 표현이 있는가?', ['없음', '피동', '사동'].map(t => pick(b.vc.k, t, `s5bVc('k','${t}')`, b.vc.ok, b.vc.bad, false)).join(''));
     if (b.vc.k === '피동') v += sub('피동의 방식', ['파생적 피동', '통사적 피동'].map(t => pick(b.vc.how, t, `s5bVc('how','${t}')`, b.vc.ok, b.vc.bad, false)).join(''));
     if (b.vc.k === '사동') { v += sub('사동의 방식', ['파생적 사동', '통사적 사동'].map(t => pick(b.vc.how, t, `s5bVc('how','${t}')`, b.vc.ok, b.vc.bad, false)).join('')); v += sub('직접 사동인가 간접 사동인가', ['직접 사동', '간접 사동', '직접·간접 모두 가능'].map(t => pick(b.vc.dir, t, `s5bVc('dir','${t}')`, b.vc.ok, b.vc.bad, false)).join('')); }
     if (b.vc.k === '피동' || b.vc.k === '사동') v += sub('피동·사동 표현이 들어 있는 어절 (모두 고르기)', S.eojeols.map((e, i) => pick(b.vc.parts, i, `s5bVc('part',${i})`, b.vc.ok, b.vc.bad, true).replace(`>${i}<`, `>${e.text}<`)).join(''));
     if (b.vc.ok) v += `<div class="text-[11px] text-emerald-200">${S.vc.why}</div>`;
-    body += box('② 피동·사동', v, b.vc.ok, 's5bValidateVc()', '피동·사동');
+    inner.vc = v;
     // 인용
     let q = sub('인용 표현이 있는가?', ['없음', '직접 인용', '간접 인용'].map(t => pick(b.quo.k, t, `s5bQuo('${t}')`, b.quo.ok, b.quo.bad, false)).join(''));
     if (b.quo.ok) q += `<div class="text-[11px] text-emerald-200">${S.quo.why}</div>`;
-    body += box('③ 인용 표현', q, b.quo.ok, 's5bValidateQuo()', '인용');
+    inner.quo = q;
     // 부정
     let n = sub('부정 표현이 있는가?', ['없음', '짧은 부정', '긴 부정'].map(t => pick(b.neg.k, t, `s5bNeg('k','${t}')`, b.neg.ok, b.neg.bad, false)).join(''));
     if (b.neg.k === '짧은 부정' || b.neg.k === '긴 부정') n += sub('부정의 종류', ['의지·단순 부정', '능력 부정', '금지'].map(t => pick(b.neg.t, t, `s5bNeg('t','${t}')`, b.neg.ok, b.neg.bad, false)).join(''));
     if (b.neg.ok) n += `<div class="text-[11px] text-emerald-200">${S.neg.why}</div>`;
-    body += box('④ 부정 표현', n, b.neg.ok, 's5bValidateNeg()', '부정');
+    inner.neg = n;
+    const validators = { hon: ['s5bValidateHon()', '높임'], vc: ['s5bValidateVc()', '피동·사동'], quo: ['s5bValidateQuo()', '인용'], neg: ['s5bValidateNeg()', '부정'] };
+    order.forEach(([k, title]) => { if (b[k].ok) body += doneLine(title, k); else if (firstOpen && firstOpen[0] === k) body += box(title, inner[k], false, validators[k][0], validators[k][1]); else body += todoLine(title); });
     const all = b.hon.ok && b.vc.ok && b.quo.ok && b.neg.ok;
     body += all ? primaryBtn('s5bNext()', '다음 단계 (단어 형성)') : `<p class="hint text-[11px] text-slate-500 text-center">높임: 주체(-시-, 께서, 잡수시다)·객체(께, 드리다, 모시다, 여쭙다)·상대(-습니다, -어요). 피동·사동: 접미사(-이-·-히-·-리-·-기-)면 파생적, '-어지다·-게 되다·-게 하다'면 통사적. 사동은 파생적이면 직접·간접 모두 가능, 통사적이면 간접만. 부정: '안·못'은 짧은 부정, '-지 않다·-지 못하다·-지 말다'는 긴 부정.</p>`;
-    return card("6단계: 높임 · 피동사동 · 인용 · 부정", "fa-comments", "네 가지 표현을 하나씩 판정하고 검증하세요.", body, 'max-w-3xl');
+    return card("6단계: 높임 · 피동사동 · 인용 · 부정", "fa-comments", "네 가지 표현을 차례로 하나씩 판정합니다.", body, 'max-w-3xl');
 }
-window.s5bHon = (kind, v) => { const h = s5b.hon; if (h.ok) return; h.bad = false; if (kind === 'has') { h.has = v; if (v === '없음') { h.types.clear(); h.means.clear(); } } else if (kind === 'type') { h.types.has(v) ? h.types.delete(v) : h.types.add(v); } else { h.means.has(v) ? h.means.delete(v) : h.means.add(v); } playSound('click'); sRenderApp(); };
-window.s5bVc = (kind, v) => { const c = s5b.vc; if (c.ok) return; c.bad = false; if (kind === 'k') { c.k = v; c.how = null; c.dir = null; c.parts.clear(); } else if (kind === 'part') { c.parts.has(v) ? c.parts.delete(v) : c.parts.add(v); } else c[kind] = v; playSound('click'); sRenderApp(); };
-window.s5bQuo = v => { if (s5b.quo.ok) return; s5b.quo.k = v; s5b.quo.bad = false; playSound('click'); sRenderApp(); };
-window.s5bNeg = (kind, v) => { const n = s5b.neg; if (n.ok) return; n.bad = false; if (kind === 'k') { n.k = v; if (v === '없음') n.t = null; } else n.t = v; playSound('click'); sRenderApp(); };
+window.s5bHon = (kind, v) => { const h = s5b.hon; if (h.ok) return; h.bad = false; if (kind === 'has') { h.has = v; if (v === '없음') { h.types.clear(); h.means.clear(); } } else if (kind === 'type') { h.types.has(v) ? h.types.delete(v) : h.types.add(v); } else { h.means.has(v) ? h.means.delete(v) : h.means.add(v); } playSound('click'); sRenderApp(); if (h.has === '없음') autoLater(s5bValidateHon); };
+window.s5bVc = (kind, v) => { const c = s5b.vc; if (c.ok) return; c.bad = false; if (kind === 'k') { c.k = v; c.how = null; c.dir = null; c.parts.clear(); } else if (kind === 'part') { c.parts.has(v) ? c.parts.delete(v) : c.parts.add(v); } else c[kind] = v; playSound('click'); sRenderApp(); if (c.k === '없음') autoLater(s5bValidateVc); };
+window.s5bQuo = v => { if (s5b.quo.ok) return; s5b.quo.k = v; s5b.quo.bad = false; playSound('click'); sRenderApp(); autoLater(s5bValidateQuo); };
+window.s5bNeg = (kind, v) => { const n = s5b.neg; if (n.ok) return; n.bad = false; if (kind === 'k') { n.k = v; if (v === '없음') n.t = null; } else n.t = v; playSound('click'); sRenderApp(); if (n.k === '없음' || n.t) autoLater(s5bValidateNeg); };
 window.s5bValidateHon = () => {
     const h = s5b.hon, H = S.hon;
     if (!h.has || (h.has === '있음' && (!h.types.size || !h.means.size))) { playSound('wrong'); showExplanationModal('높임 표현의 유무를 고르고, 있으면 종류와 실현 방식을 모두 고르세요.'); return; }
     const okHas = (h.has === '있음') === H.has, okT = !H.has || sameSet(h.types, new Set(H.types)), okM = !H.has || sameSet(h.means, new Set(H.means));
-    if (okHas && okT && okM) { playSound('correct'); h.ok = true; sRenderApp(); return; }
+    if (okHas && okT && okM) { playSound('correct'); h.ok = true; sRenderApp(); if (s5bReady()) autoLater(s5bNext, 900); return; }
     sMarkWrong(); h.bad = true; sRenderApp();
     showExplanationModal((H.has ? `높임 표현이 있습니다. 종류: ${H.types.join(', ')} / 실현 방식: ${H.means.join(', ')}` : '높임 표현이 없습니다.') + `\n\n${H.why}\n\n• 주체 높임: 서술의 주체를 높임 (-시-, 께서, 계시다·주무시다·잡수시다)\n• 객체 높임: 목적어·부사어의 대상을 높임 (께, 드리다·모시다·여쭙다·뵙다)\n• 상대 높임: 듣는 이를 높임 (종결 어미 -습니다·-어요, 겸양어 저·제)`);
 };
@@ -2914,23 +3121,23 @@ window.s5bValidateVc = () => {
     const c = s5b.vc, V = S.vc;
     if (!c.k || (c.k !== '없음' && (!c.how || (c.k === '사동' && !c.dir) || !c.parts.size))) { playSound('wrong'); showExplanationModal('피동·사동의 유무와 방식(사동은 직접·간접까지), 해당 어절을 모두 고르세요.'); return; }
     const ok = c.k === V.k && (V.k === '없음' || (c.how === V.how && (V.k !== '사동' || c.dir === V.dir) && sameSet(c.parts, new Set(V.parts))));
-    if (ok) { playSound('correct'); c.ok = true; sRenderApp(); return; }
+    if (ok) { playSound('correct'); c.ok = true; sRenderApp(); if (s5bReady()) autoLater(s5bNext, 900); return; }
     sMarkWrong(); c.bad = true; sRenderApp();
     showExplanationModal((V.k === '없음' ? '피동·사동 표현이 없습니다.' : `${V.k} · ${V.how}${V.dir ? ` · ${V.dir}` : ''} · 어절: ${V.parts.map(i => S.eojeols[i].text).join(', ')}`) + `\n\n${V.why}`);
 };
 window.s5bValidateQuo = () => {
     const q = s5b.quo, Q = S.quo;
     if (!q.k) { playSound('wrong'); showExplanationModal('인용 표현의 유무와 종류를 고르세요.'); return; }
-    if (q.k === Q.k) { playSound('correct'); q.ok = true; sRenderApp(); return; }
+    if (q.k === Q.k) { playSound('correct'); q.ok = true; sRenderApp(); if (s5bReady()) autoLater(s5bNext, 900); return; }
     sMarkWrong(); q.bad = true; sRenderApp(); showExplanationModal(`인용: ${Q.k}\n\n${Q.why}`);
 };
 window.s5bValidateNeg = () => {
     const n = s5b.neg, N = S.neg;
     if (!n.k || (n.k !== '없음' && !n.t)) { playSound('wrong'); showExplanationModal('부정 표현의 유무와 종류를 고르세요.'); return; }
-    if (n.k === N.k && (N.k === '없음' || n.t === N.t)) { playSound('correct'); n.ok = true; sRenderApp(); return; }
+    if (n.k === N.k && (N.k === '없음' || n.t === N.t)) { playSound('correct'); n.ok = true; sRenderApp(); if (s5bReady()) autoLater(s5bNext, 900); return; }
     sMarkWrong(); n.bad = true; sRenderApp(); showExplanationModal((N.k === '없음' ? '부정 표현이 없습니다.' : `부정: ${N.k} · ${N.t}`) + `\n\n${N.why}`);
 };
-window.s5bNext = () => { sPhase = 7; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0); };
+window.s5bNext = () => { sGoto(7); };
 const s5bReady = () => s5b.hon.ok && s5b.vc.ok && s5b.quo.ok && s5b.neg.ok;
 
 
@@ -2950,7 +3157,7 @@ window.s6Toggle = i => { if (s6.ok || i < 0) return; s6.picked.has(i) ? s6.picke
 function s6Validate() {
     const cw = contentWords();
     const exp = new Set(cw.filter(x => x.w.comp).map(x => x.i));
-    if (sameSet(s6.picked, exp)) { playSound('correct'); s6.ok = true; s6.queue = cw.filter(x => x.w.comp).map(x => ({ wi: x.i, recipe: x.w.comp })); sRenderApp(); return; }
+    if (sameSet(s6.picked, exp)) { playSound('correct'); s6.ok = true; s6.queue = cw.filter(x => x.w.comp).map(x => ({ wi: x.i, recipe: x.w.comp })); sRenderApp(); autoLater(() => { if (s6.queue.length) s6StartTree(); else s7Start(); }, 900); return; }
     sMarkWrong();
     const missed = [...exp].filter(i => !s6.picked.has(i)).map(i => `${eunNeun(S.words[i].text)} 복합어입니다 (기본형 ${S.words[i].comp})`);
     const extra = [...s6.picked].filter(i => !exp.has(i)).map(i => { const w = S.words[i]; return `${eunNeun(w.text)} 단일어입니다 — 어근 '${w.morphs.filter(m => SCAT[m.cat].kind === '어근').map(m => m.form).join(', ') || w.morphs[0].form}' 하나에 ${w.morphs.length > 1 ? '어미만 붙은 것' : '해당'}`; });
@@ -2982,13 +3189,15 @@ window.s6Pick = (lv, k) => {
             s6.cur = null;
         }
         sRenderApp();
+        if (!s6.cur && !s6.queue.length) autoLater(s7Start, 900);
     } else { sMarkWrong(); showExplanationModal(WordEngine.explain(sub, choice)); }
 };
 
 /* ---- 완료 ---- */
 function sFinish() {
     sPhase = 9;
-    let pts = sRevealed ? 0 : Math.max(5, 20 - 2 * sWrong);
+    const ratio = sTut ? 1 : sPhasesOn.size / 8;
+    let pts = sRevealed ? 0 : Math.max(Math.round(5 * ratio), Math.round((20 - 2 * sWrong) * ratio));
     sPoints = pts;
     stats.score += pts; stats.words += 1; stats.wrong += sWrong;
     stats.streak = (sWrong === 0 && !sRevealed) ? stats.streak + 1 : 0;
@@ -3020,7 +3229,7 @@ function sReveal() {
     if (sPhase === 1) { S.eojeols.forEach((e, ei) => { s1.cuts[ei] = expectedCuts(e.words); s1.bad.delete(ei); }); text = S.eojeols.map(e => `'${e.text}' → ${e.words.map(w => w.text).join(' + ')}`).join('\n') + '\n\n검증 버튼을 누르세요.'; }
     else if (sPhase === 2) { if (s2.cur) { text = `'${s2.cur.chunk.text}' = ${s2.cur.correct}`; s2Advance(); } else { S.words.forEach((w, wi) => { s2.cuts[wi] = expectedCuts(w.chunks); let st = 0; s2.fused[wi] = new Set(); w.chunks.forEach(c => { if (c.morphs.length > 1) s2.fused[wi].add(st); st += c.text.length; }); s2.bad.delete(wi); }); text = S.words.map(w => `'${w.text}' → ${w.chunks.map(c => c.text).join(' | ')}`).join('\n') + '\n\n검증 버튼을 누르세요.'; } }
     else if (sPhase === 3) { const [a, b] = s3Range(); for (let i = a; i < b; i++) { s3.assigned[i] = S.morphs[i].cat; s3.bad.delete(i); } text = `'${S.words[s3.wi].text}': ` + S.morphs.slice(a, b).map(m => `'${m.form}' → ${m.cat}`).join(', ') + '\n\n검증 버튼을 누르세요.'; }
-    else if (sPhase === 4) { S.morphs.forEach((m, i) => { s4.auto[i] = m.auto; s4.mean[i] = m.mean; s4.okA.add(i); s4.okM.add(i); }); text = `자립 ${S.counts.auto} · 의존 ${S.counts.dep} / 실질 ${S.counts.real} · 형식 ${S.counts.form}\n\n검증 버튼을 누르세요.`; }
+    else if (sPhase === 4) { if (s4.done) return; const i = s4.mi, mm = S.morphs[i]; s4.auto[i] = mm.auto; s4.mean[i] = mm.mean; s4.badA.delete(i); s4.badM.delete(i); text = `'${mm.form}' → ${mm.auto} · ${mm.mean}\n\n검증 버튼을 누르세요.`; }
     else if (sPhase === 5) { s5.tense = S.tense; s5.asp = S.asp.k; s5.end = S.end.k; s5.q = S.end.q || null; s5.bad.clear(); text = `시제: ${S.tense}\n동작상: ${S.asp.k}\n종결: ${S.end.k}${S.end.q ? ` (${S.end.q})` : ''}\n\n검증 버튼을 누르세요.`; }
     else if (sPhase === 6) { const b = s5b; if (!b.hon.ok) { b.hon.has = S.hon.has ? '있음' : '없음'; b.hon.types = new Set(S.hon.types); b.hon.means = new Set(S.hon.means); text = `높임: ${S.hon.has ? S.hon.types.join(', ') + ' / ' + S.hon.means.join(', ') : '없음'}`; } else if (!b.vc.ok) { b.vc.k = S.vc.k; b.vc.how = S.vc.how || null; b.vc.dir = S.vc.dir || null; b.vc.parts = new Set(S.vc.parts); text = `피동·사동: ${S.vc.k}${S.vc.how ? ' · ' + S.vc.how : ''}${S.vc.dir ? ' · ' + S.vc.dir : ''}`; } else if (!b.quo.ok) { b.quo.k = S.quo.k; text = `인용: ${S.quo.k}`; } else if (!b.neg.ok) { b.neg.k = S.neg.k; b.neg.t = S.neg.t || null; text = `부정: ${S.neg.k}${S.neg.t ? ' · ' + S.neg.t : ''}`; } else return; text += '\n\n검증 버튼을 누르세요.'; }
     else if (sPhase === 7) { if (s6.cur) { const sub = s6.cur.sub, ans = sub.treeAnswers[s6.cur.path.length]; text = `정답: ${ans}`; window.s6Pick(s6.cur.path.length, treeSteps(s6.cur.path)[s6.cur.path.length].options.indexOf(ans)); return showAnswerModal(text); } else { s6.picked = new Set(contentWords().filter(x => x.w.comp).map(x => x.i)); text = '복합어: ' + (contentWords().filter(x => x.w.comp).map(x => x.w.text).join(', ') || '없음') + '\n\n검증 버튼을 누르세요.'; } }
@@ -3035,12 +3244,15 @@ function enterSentenceMode() {
     document.getElementById('start-screen').classList.add('hidden');
     ['phase-bar', 'app-container', 'control-bar'].forEach(id => document.getElementById(id).classList.remove('hidden'));
     document.getElementById('filter-selector').classList.add('hidden'); document.getElementById('mode-selector').classList.add('hidden');
+    document.getElementById('sfilter-selector').classList.remove('hidden'); document.getElementById('btn-phases').classList.remove('hidden');
+    document.getElementById('sfilter-selector').value = sFilter;
     const sel = document.getElementById('word-selector'); sel.onchange = () => loadSentence(parseInt(sel.value));
-    loadSentence(Math.floor(Math.random() * SPROBLEMS.length));
+    const pool = sPool(); loadSentence(pool[Math.floor(Math.random() * pool.length)]);
 }
 function enterWordMode() {
     appMode = 'word';
     document.getElementById('filter-selector').classList.remove('hidden'); document.getElementById('mode-selector').classList.remove('hidden');
+    document.getElementById('sfilter-selector').classList.add('hidden'); document.getElementById('btn-phases').classList.add('hidden');
     const sel = document.getElementById('word-selector'); sel.onchange = () => loadWord(parseInt(sel.value));
 }
 const _startWith = startWith; startWith = function (f) { enterWordMode(); _startWith(f); };
@@ -3070,7 +3282,7 @@ document.addEventListener('keydown', e => {
 
 /* ---- 7단계: 문장의 짜임 (홑문장·겹문장 → 안은·이어진 → 종류/대등·종속 → 어절) ---- */
 const CLAUSE_TYPES = ["명사절", "관형절", "부사절", "서술절", "인용절"];
-function s7Start() { sPhase = 8; s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, linkOk: false, done: false }; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0); }
+function s7Start() { if (!sPhaseOn(8)) { sFinish(); return; } sPhase = 8; s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, linkOk: false, done: false }; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0); }
 function s7Steps() {
     const st = S.st, steps = [{ title: "1. 주어와 서술어의 관계가 몇 번 나타나는가", options: ["홑문장", "겹문장"], ans: st.k === '홑' ? '홑문장' : '겹문장' }];
     if (st.k === '홑') return steps;
@@ -3117,7 +3329,7 @@ function s7Summary() {
 }
 window.s7Pick = (lv, k) => {
     const sp = s7Steps()[lv], choice = sp.options[k];
-    if (choice === sp.ans) { playSound('correct'); s7.path.push(choice); sRenderApp(); return; }
+    if (choice === sp.ans) { playSound('correct'); s7.path.push(choice); sRenderApp(); if (s7Ready()) autoLater(sFinish, 700); return; }
     sMarkWrong();
     const st = S.st;
     let msg = '';
@@ -3129,21 +3341,21 @@ window.s7Pick = (lv, k) => {
 window.s7Type = t => { if (s7.typesOk) return; s7.types.has(t) ? s7.types.delete(t) : s7.types.add(t); playSound('click'); sRenderApp(); };
 window.s7ValidateTypes = () => {
     const st = S.st;
-    if (sameSet(s7.types, st.types)) { playSound('correct'); s7.typesOk = true; sRenderApp(); return; }
+    if (sameSet(s7.types, st.types)) { playSound('correct'); s7.typesOk = true; sRenderApp(); if (s7Ready()) autoLater(sFinish, 700); return; }
     sMarkWrong();
     const guide = { "명사절": "'-음/-기'가 붙어 주어·목적어 노릇", "관형절": "'-ㄴ/-은/-는/-ㄹ'이 붙어 뒤의 체언을 꾸밈", "부사절": "'-이/-게/-도록'이 붙어 서술어를 꾸밈", "서술절": "주어가 두 번 나타나고 '주어+서술어'가 서술어 노릇", "인용절": "'고/라고'가 붙어 남의 말을 옮김" };
     showExplanationModal(`안긴문장은 ${[...st.types].join(', ')}입니다.\n\n${st.why}\n\n` + CLAUSE_TYPES.map(t => `• ${t}: ${guide[t]}`).join('\n'));
 };
-window.s7Part = (i, multi) => { if (multi) { if (s7.partsOk) return; s7.parts.has(i) ? s7.parts.delete(i) : s7.parts.add(i); } else { if (s7.linkOk) return; s7.link = i; } playSound('click'); sRenderApp(); };
+window.s7Part = (i, multi) => { if (multi) { if (s7.partsOk) return; s7.parts.has(i) ? s7.parts.delete(i) : s7.parts.add(i); } else { if (s7.linkOk) return; s7.link = i; } playSound('click'); sRenderApp(); if (!multi) autoLater(s7ValidateLink); };
 window.s7ValidateLink = () => {
     const st = S.st;
-    if (s7.link === st.link) { playSound('correct'); s7.linkOk = true; sRenderApp(); return; }
+    if (s7.link === st.link) { playSound('correct'); s7.linkOk = true; sRenderApp(); if (s7Ready()) autoLater(sFinish, 700); return; }
     sMarkWrong();
     showExplanationModal(`앞 절의 서술어 '${S.eojeols[st.link].text}'에 연결 어미가 있습니다. 여기서 앞 절이 끝나고 뒤 절이 이어집니다.\n\n${st.why}`);
 };
 window.s7ValidateParts = () => {
     const st = S.st;
-    if (sameSet(s7.parts, st.parts)) { playSound('correct'); s7.partsOk = true; sRenderApp(); return; }
+    if (sameSet(s7.parts, st.parts)) { playSound('correct'); s7.partsOk = true; sRenderApp(); if (s7Ready()) autoLater(sFinish, 700); return; }
     sMarkWrong();
     showExplanationModal(`안긴문장은 '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}'입니다. 안긴문장 안의 주어·목적어·부사어까지 모두 포함하고, 꾸밈을 받는 말(체언·의존 명사)은 뺍니다.\n\n${st.why}`);
 };
@@ -3167,7 +3379,7 @@ function sTutorialTip() {
     else if (sPhase === 2 && s2.cur) { step = '2단계 겹친 글자'; text = `한 글자 안에 형태소가 둘 들어 있어요. '싸움'은 <b>'싸우 + ㅁ'</b>(어간 + 명사 만드는 접미사), '렸'은 <b>'리 + 었'</b>(사동 접미사 + 과거)로 줄어든 것입니다. 맞는 나누기를 고르세요.`; }
     else if (sPhase === 2) { step = '2단계 단어 → 형태소'; text = `'누나', '가', '에서', '아이', '를'은 형태소 하나라 그대로 둡니다. <b>눈싸움</b>은 눈 + 싸우- + -ㅁ이니 <b>눈|싸움</b>으로 자르고, '싸움'은 싸우-와 -ㅁ이 '움' 글자 안에서 겹쳐 있으니 아래 <b>'싸움 겹침'</b>을 켜세요(싸|움으로 자르고 '움 겹침'을 켜도 됩니다). <b>울렸다</b>는 울- + -리- + -었- + -다이니 <b>울|렸|다</b>로 자르고 <b>'렸 겹침'</b>을 켠 뒤 검증하세요.`; }
     else if (sPhase === 3) { step = '3단계 형태소 종류'; text = `누나·눈·아이 → <b>보통 명사</b>, 가 → <b>주격 조사</b>, 에서 → <b>부사격 조사</b>, 를 → <b>목적격 조사</b>, 싸우-·울- → <b>동사 어간</b>, -ㅁ → <b>접미사</b>(동사를 명사로 만듦), -리- → <b>사동 접미사</b>(울게 시킴), -었- → <b>시제 선어말 어미</b>(과거), -다 → <b>종결 어미</b>. 블록이 많으니 묶음 이름(체언·조사·어미…)을 보고 찾으세요.`; }
-    else if (sPhase === 4) { step = '4단계 형태소 성격'; text = `명사(누나, 눈, 아이)는 <b>자립·실질</b>, 어간(싸우-, 울-)은 <b>의존·실질</b>, 조사·접미사·어미(가, -ㅁ, 에서, 를, -리-, -었-, -다)는 모두 <b>의존·형식</b>이에요. 검증하면 개수를 세어 줍니다. 시험의 "자립 형태소는 몇 개?"가 바로 이 문제예요.`; }
+    else if (sPhase === 4) { step = '4단계 형태소 성격'; text = `형태소를 하나씩 물어요. 명사(누나, 눈, 아이)는 <b>자립·실질</b>, 어간(싸우-, 울-)은 <b>의존·실질</b>, 조사·접미사·어미(가, -ㅁ, 에서, 를, -리-, -었-, -다)는 모두 <b>의존·형식</b>이에요. 하나 맞힐 때마다 다음 형태소로 넘어가고, 다 끝나면 개수를 세어 줍니다. 시험의 "자립 형태소는 몇 개?"가 바로 이 문제예요.`; }
     else if (sPhase === 5) { step = '5단계 시제·동작상·종결'; text = `'-었-'이 있으니 시제는 <b>과거</b>. '-고 있다'나 '-어 버리다' 같은 표현이 없으니 동작상은 <b>표현 없음</b>. 종결 어미 '-다'로 끝났으니 <b>평서문</b>이에요.`; }
     else if (sPhase === 6) { step = '6단계 높임·피동사동·인용·부정'; text = `① 높임: '께서'도 '-시-'도 '-습니다'도 없으니 <b>없음</b>. ② 피동·사동: '울렸다'는 누나가 아이를 울게 <b>시킨</b> 것이니 <b>사동</b>, 접미사 '-리-'로 만들었으니 <b>파생적 사동</b>, 파생적 사동은 <b>직접·간접 모두 가능</b>, 어절은 <b>울렸다</b>. ③ 인용 <b>없음</b>, ④ 부정 <b>없음</b>. 네 칸을 각각 검증하세요.`; }
     else if (sPhase === 7 && s6.cur) { step = '7단계 형성 트리'; text = s6.cur.sub.word === '눈싸움' ? `<b>눈싸움</b> = 눈 + 싸움, 어근이 둘이니 <b>복합어 → 합성어</b>. '눈 싸움'처럼 명사+명사 배열은 우리말 어순에 맞으니 <b>통사적</b>, '눈으로 하는 싸움'으로 앞이 뒤를 꾸미니 <b>종속</b>. 이어서 안쪽 단어 '싸움' = 싸우- + -ㅁ → <b>복합어 → 파생어 → 접미 파생어</b>, 동사를 명사로 바꾸니 <b>지배적 접사</b>예요.` : `<b>울렸다(울리다)</b> = 울- + -리-. 어근 하나에 접미사가 붙었으니 <b>복합어 → 파생어 → 접미 파생어</b>. 사동 접미사 '-리-'는 동사를 그대로 동사로 두고 뜻만 더하니 <b>한정적 접사</b>예요.`; }
@@ -3200,13 +3412,70 @@ const _renderStart2 = renderStart; renderStart = function () {
     if (btn) btn.insertAdjacentHTML('afterend', `<button onclick="startSentenceTutorial()" class="w-full max-w-xs -mt-4 py-3 ${sTutDone ? 'bg-slate-900 border border-slate-700 text-slate-300' : 'bg-purple-500/15 border-2 border-purple-500/70 text-purple-300'} hover:bg-purple-500/25 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fa-solid fa-graduation-cap"></i> ${sTutDone ? '문장 튜토리얼 다시 보기' : '문장 튜토리얼 (누나가 눈싸움에서 아이를 울렸다)'}</button>`);
 };
 
+
+/* =====================================================================
+   미니 테스트: 단어·문장 데이터로 객관식 5문항을 자동 생성
+   ===================================================================== */
+let quiz = null;
+const qPick = arr => arr[Math.floor(Math.random() * arr.length)];
+const qShuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const qNums = ans => { const set = new Set([ans]); let d = 1; while (set.size < 4) { if (ans - d >= 0) set.add(ans - d); if (set.size < 4) set.add(ans + d); d++; } return qShuffle([...set]).slice(0, 4).includes(ans) ? qShuffle([...set]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 4) : null; };
+const stLabel = st => st.k === '홑' ? '홑문장' : st.k === '안은' ? `${[...st.types][0]}을 안은 문장` : st.rel === '대등' ? '대등하게 이어진 문장' : '종속적으로 이어진 문장';
+const QGEN = {
+    count: () => { const p = qPick(SPROBLEMS.filter(x => x.morphs.length >= 6 && x.morphs.length <= 12)); const kind = qPick([['자립 형태소', p.counts.auto], ['의존 형태소', p.counts.dep], ['실질 형태소', p.counts.real], ['형식 형태소', p.counts.form]]); let opts = new Set([kind[1]]); let d = 1; while (opts.size < 4) { if (kind[1] - d >= 0) opts.add(kind[1] - d); if (opts.size < 4) opts.add(kind[1] + d); d++; } return { q: `다음 문장에서 ${kind[0]}는 몇 개인가?`, ctx: p.text, options: qShuffle([...opts]).map(String), answer: String(kind[1]), explain: `형태소 ${p.morphs.length}개: ${p.morphs.map(mm => `${mm.form}(${mm.auto.replace(' 형태소', '')}·${mm.mean.replace(' 형태소', '')})`).join(', ')}` }; },
+    structure: () => { const p = qPick(SPROBLEMS.filter(x => x.st.k !== '안은' || x.st.types.size === 1)); const all = ['홑문장', '관형절을 안은 문장', '명사절을 안은 문장', '부사절을 안은 문장', '서술절을 안은 문장', '인용절을 안은 문장', '대등하게 이어진 문장', '종속적으로 이어진 문장']; const ans = stLabel(p.st); return { q: '다음 문장의 짜임으로 알맞은 것은?', ctx: p.text, options: qShuffle([ans, ...qShuffle(all.filter(o => o !== ans)).slice(0, 3)]), answer: ans, explain: p.st.why }; },
+    morph: () => { const p = qPick(SPROBLEMS); const cands = p.morphs.filter(mm => !/명사$/.test(mm.cat) || Math.random() < 0.3); const mm = qPick(cands.length ? cands : p.morphs); const grp = FINE_GROUPS.find(g => g.cats.includes(mm.cat)); const pool = (grp ? grp.cats : SCATS).filter(c => c !== mm.cat); const others = pool.length >= 3 ? qShuffle(pool).slice(0, 3) : qShuffle(SCATS.filter(c => c !== mm.cat)).slice(0, 3); return { q: `다음 문장의 형태소 '${mm.form}'의 종류는?`, ctx: p.text, options: qShuffle([mm.cat, ...others]), answer: mm.cat, explain: `'${mm.form}': ${mm.cat} — ${mm.gloss}` }; },
+    voice: () => { const p = qPick(SPROBLEMS.filter(x => x.vc.k !== '없음')); const all = ['파생적 피동', '통사적 피동', '파생적 사동', '통사적 사동']; return { q: '다음 문장에 쓰인 피동·사동 표현은?', ctx: p.text, options: qShuffle(all), answer: p.vc.how, explain: p.vc.why }; },
+    honor: () => { const yes = qPick(SPROBLEMS.filter(x => x.hon.has)), no = qShuffle(SPROBLEMS.filter(x => !x.hon.has && x.eojeols.length <= 5)).slice(0, 3); return { q: '다음 중 높임 표현이 쓰인 문장은?', options: qShuffle([yes.text, ...no.map(x => x.text)]), answer: yes.text, explain: yes.hon.why }; },
+    tense: () => { const t = qPick(['과거', '미래']); const yes = qPick(SPROBLEMS.filter(x => x.tense === t)), no = qShuffle(SPROBLEMS.filter(x => x.tense !== t && x.eojeols.length <= 5)).slice(0, 3); return { q: `다음 중 시제가 ${t}인 문장은?`, options: qShuffle([yes.text, ...no.map(x => x.text)]), answer: yes.text, explain: yes.why }; },
+    negation: () => { const p = qPick(SPROBLEMS.filter(x => x.neg.k !== '없음')); const all = ['짧은 부정 · 의지·단순 부정', '짧은 부정 · 능력 부정', '긴 부정 · 의지·단순 부정', '긴 부정 · 능력 부정', '긴 부정 · 금지']; const ans = `${p.neg.k} · ${p.neg.t}`; return { q: '다음 문장의 부정 표현으로 알맞은 것은?', ctx: p.text, options: qShuffle([ans, ...qShuffle(all.filter(o => o !== ans)).slice(0, 3)]), answer: ans, explain: p.neg.why }; },
+    ending: () => { const p = qPick(SPROBLEMS.filter(x => x.end.k !== '평서문')); const all = ['평서문', '의문문', '명령문', '청유문', '감탄문']; return { q: '다음 문장의 종류(종결 표현)는?', ctx: p.text, options: qShuffle([p.end.k, ...qShuffle(all.filter(o => o !== p.end.k)).slice(0, 3)]), answer: p.end.k, explain: p.end.why + (p.end.q ? ` (${p.end.q})` : '') }; },
+    wordtype: () => { const types = ['통사적 합성어', '비통사적 합성어', '접두 파생어', '접미 파생어', '단일어']; const a = qPick(types), b = qPick(types.filter(t => t !== a)); const same = qShuffle(PROBLEMS.filter(p => p.typeLabel === a)).slice(0, 3), diff = qPick(PROBLEMS.filter(p => p.typeLabel === b)); if (same.length < 3 || !diff) return null; return { q: '다음 중 단어의 형성 방법이 나머지와 다른 하나는?', options: qShuffle([...same.map(p => p.word), diff.word]), answer: diff.word, explain: `${diff.word}: ${diff.typeLabel} (${diff.morphemes.map(mm => mm.form).join('+')}) / 나머지는 ${a}: ${same.map(p => `${p.word}(${p.morphemes.map(mm => mm.form).join('+')})`).join(', ')}` }; },
+    ic: () => { const cands = PROBLEMS.filter(p => p.word.length >= 3 && p.tree.cuttable && p.treeAnswers[0] === '복합어'); const p = qPick(cands); const w = p.word, len = w.length; const opts = []; for (let pos = 1; pos < len; pos++) opts.push(`${w.slice(0, pos)} + ${w.slice(pos)}`); const ans = `${w.slice(0, p.tree.cutChar)} + ${w.slice(p.tree.cutChar)}`; const extra = [`${w[0]} + ${w[1]} + ${w.slice(2)}`, `${w.slice(0, -1)} + ${w.slice(-1)} (어미만 분리)`, '나눌 수 없음 (단일어)']; const pick = qShuffle([...opts.filter(o => o !== ans), ...extra.filter(o => o !== ans && !opts.includes(o))]).slice(0, 3); return { q: `'${w}'의 직접 구성 요소(가장 먼저 나뉘는 두 부분)로 알맞은 것은?`, options: qShuffle([ans, ...pick]), answer: ans, explain: WordEngine.explainCut(p, p.tree) }; },
+};
+function makeQuiz(n = 5) {
+    const keys = qShuffle(Object.keys(QGEN)); const qs = [];
+    for (const k of keys) { if (qs.length >= n) break; try { const q = QGEN[k](); if (q && q.options.length === 4 && q.options.includes(q.answer)) qs.push({ ...q, type: k }); } catch (e) {} }
+    return qs;
+}
+function enterQuizMode() {
+    appMode = 'quiz'; tutorial = false; sTut = false; playSound('correct'); closeBlockSheet();
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+    ['phase-bar', 'control-bar'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    quiz = { qs: makeQuiz(5), i: 0, picked: null, correct: 0, done: false };
+    renderQuiz(); window.scrollTo(0, 0);
+}
+function renderQuiz() {
+    const c = document.getElementById('app-container');
+    if (!quiz.qs.length) { c.innerHTML = card('미니 테스트', 'fa-file-pen', '문제를 만들지 못했습니다.', primaryBtn('showStart()', '홈으로')); return; }
+    if (quiz.done) {
+        const pts = quiz.correct * 2;
+        c.innerHTML = card('미니 테스트 결과', 'fa-trophy', `${quiz.qs.length}문제 중 ${quiz.correct}문제 정답`, `<div class="text-center"><div class="text-5xl font-black text-indigo-300">${quiz.correct} / ${quiz.qs.length}</div><div class="text-sm text-slate-300 mt-2">+${pts}점 (문제당 2점) · 누적 ${stats.score}점</div></div><div class="w-full flex gap-2"><button onclick="enterQuizMode()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm"><i class="fa-solid fa-rotate-right mr-1"></i> 새 문제 5개</button><button onclick="showStart()" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-sm border border-slate-600"><i class="fa-solid fa-house"></i></button></div>`);
+        return;
+    }
+    const q = quiz.qs[quiz.i], answered = quiz.picked !== null;
+    let body = `<div class="w-full text-[11px] text-slate-400 text-center">문제 ${quiz.i + 1} / ${quiz.qs.length} · 맞힌 개수 ${quiz.correct}</div>`;
+    body += `<div class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-center"><div class="text-base font-bold text-slate-100">${q.q}</div>${q.ctx ? `<div class="mt-2 text-xl font-black text-amber-300">${q.ctx}</div>` : ''}</div>`;
+    body += `<div class="w-full grid grid-cols-1 gap-2">${q.options.map((o, k) => { const isAns = o === q.answer, isPick = o === quiz.picked; const cls = answered ? (isAns ? 'border-emerald-500 bg-emerald-500/20 text-emerald-100' : isPick ? 'border-rose-500 bg-rose-500/20 text-rose-100' : 'border-slate-700 bg-slate-900 text-slate-500') : 'border-slate-600 bg-slate-800 hover:bg-indigo-600 text-slate-100'; return `<button ${answered ? 'disabled' : ''} onclick="quizPick(${k})" class="w-full text-left px-4 py-3 rounded-xl border text-sm font-bold transition ${cls}"><span class="inline-block w-6 text-slate-400">${'①②③④'[k]}</span>${o}</button>`; }).join('')}</div>`;
+    if (answered) body += `<div class="w-full ${quiz.picked === q.answer ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-100' : 'bg-rose-950/40 border-rose-500/50 text-rose-100'} border rounded-xl p-3 text-xs leading-relaxed whitespace-pre-line"><b>${quiz.picked === q.answer ? '정답!' : `오답 — 정답은 '${q.answer}'`}</b>\n${q.explain}</div>` + primaryBtn('quizNext()', quiz.i + 1 < quiz.qs.length ? '다음 문제' : '결과 보기');
+    c.innerHTML = card('미니 테스트', 'fa-file-pen', '시험처럼 객관식으로 풀어 봅니다. 문제당 2점.', body, 'max-w-2xl');
+}
+window.quizPick = k => { if (quiz.picked !== null) return; const q = quiz.qs[quiz.i]; quiz.picked = q.options[k]; if (quiz.picked === q.answer) { quiz.correct++; playSound('correct'); } else playSound('wrong'); renderQuiz(); };
+window.quizNext = () => { quiz.i++; quiz.picked = null; if (quiz.i >= quiz.qs.length) { quiz.done = true; const pts = quiz.correct * 2; stats.score += pts; stats.words += 1; saveStats(); updateScoreChip(); submitScore(); playSound('complete'); } renderQuiz(); window.scrollTo(0, 0); };
+document.addEventListener('keydown', e => { if (appMode !== 'quiz' || !quiz) return; if (e.target && ['SELECT', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) return; if (quiz.done) return; if (quiz.picked === null && /^[1-4]$/.test(e.key)) quizPick(parseInt(e.key) - 1); else if (quiz.picked !== null && e.key === 'Enter') quizNext(); });
+const _renderStart3 = renderStart; renderStart = function () {
+    _renderStart3();
+    const btn = document.querySelector('#start-screen [onclick="startSentenceTutorial()"]');
+    if (btn) btn.insertAdjacentHTML('afterend', `<button onclick="enterQuizMode()" class="w-full max-w-xs -mt-4 py-3 bg-emerald-600/20 border-2 border-emerald-500/60 text-emerald-200 hover:bg-emerald-600/30 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2"><i class="fa-solid fa-file-pen"></i> 미니 테스트 <span class="text-xs font-medium opacity-80">객관식 5문제</span></button>`);
+};
+
 (function initSentences() {
     const errs = sentenceSelfCheck();
     if (errs.length) { console.error('문장 오류', errs); const w = document.getElementById('engine-warning'); w.classList.remove('hidden'); w.innerHTML += `<b>문장 뱅크 검증 실패 (${errs.length}건)</b><br>${errs.join('<br>')}`; }
     SPROBLEMS = SENTENCES.filter(sp => { try { buildSentence(sp); return true; } catch (e) { return false; } }).map(buildSentence);
     renderStart();
 })();
-
 </script>
 </body>
 </html>

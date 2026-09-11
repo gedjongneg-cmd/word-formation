@@ -6,12 +6,16 @@
 <title>단어의 짜임 랭킹</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f4efe4; --card:#fbf8f1; --line:#d6ccb6; --ink:#1e1913; --muted:#857c6b; --accent:#4f46e5; --gold:#b45309; }
+  :root { --bg:#f4efe4; --card:#fbf8f1; --line:#d6ccb6; --ink:#1e1913; --muted:#6b6353; --accent:#4f46e5; --gold:#b45309; }
   * { box-sizing: border-box; }
   body { margin:0; font-family:'Noto Sans KR', sans-serif; background:var(--bg); color:var(--ink); }
   .wrap { max-width:640px; margin:0 auto; padding:24px 16px 48px; }
   h1 { font-size:1.5rem; margin:0 0 4px; }
-  .sub { color:var(--muted); font-size:.85rem; margin:0 0 18px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .sub { color:var(--muted); font-size:.85rem; margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .tabs button { padding:7px 12px; border-radius:10px; border:1px solid var(--line); background:#fff; font:inherit; font-size:.85rem; font-weight:700; cursor:pointer; }
+  .tabs button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tabs select { padding:7px 10px; border-radius:10px; border:1px solid var(--line); font:inherit; font-size:.85rem; background:#fff; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:8px 12px; }
   table { width:100%; border-collapse:separate; border-spacing:0 6px; font-size:.95rem; }
   th { text-align:left; color:var(--muted); font-weight:700; font-size:.75rem; padding:4px 8px; }
@@ -20,38 +24,46 @@
   tr td:last-child { border-radius:0 10px 10px 0; }
   .num { text-align:center; font-variant-numeric: tabular-nums; }
   .score { color:var(--accent); font-weight:900; font-size:1.05rem; }
+  .cls { color:var(--muted); font-size:.75rem; margin-left:4px; }
   .top1 td { background:#fff3d6; } .top2 td { background:#f1efe9; } .top3 td { background:#fbe6d3; }
   .empty { text-align:center; color:var(--muted); padding:28px 0; }
   a.btn { display:inline-block; padding:8px 14px; border-radius:10px; background:var(--accent); color:#fff; text-decoration:none; font-weight:700; font-size:.85rem; }
-  button { padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font:inherit; font-size:.8rem; cursor:pointer; }
+  button.plain { padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font:inherit; font-size:.8rem; cursor:pointer; }
   .meta { color:var(--muted); font-size:.75rem; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🏆 단어의 짜임 랭킹</h1>
-  <p class="sub"><span id="meta" class="meta">불러오는 중…</span><span><button onclick="load()">새로 고침</button> <a class="btn" href="./">문제 풀러 가기</a></span></p>
+  <p class="sub"><span id="meta" class="meta">불러오는 중…</span><span><button class="plain" onclick="load()">새로 고침</button> <a class="btn" href="./">문제 풀러 가기</a></span></p>
+  <div class="tabs"><button id="tab-all" class="on" onclick="setTab('all')">전체 누적</button><button id="tab-week" onclick="setTab('week')">이번 주</button><select id="cls-select" onchange="setTab('cls')"><option value="">반별 보기</option></select></div>
   <div class="card" id="board"><div class="empty">불러오는 중…</div></div>
-  <p class="meta" style="margin-top:14px">점수: 단어 하나 10점, 오답마다 −2점(최소 3점), 정답 보기를 쓰면 0점, 여러 층 짜임은 ×1.5. 30초마다 자동 갱신됩니다.</p>
+  <p class="meta" style="margin-top:14px">점수: 단어 10점·문장 20점·미니 테스트 문제당 2점, 오답마다 −2점, 정답 보기를 쓰면 0점. '이번 주'는 월요일부터 얻은 점수입니다. 30초마다 자동 갱신됩니다.</p>
 </div>
 <script>
 const RANK_API = 'https://script.google.com/macros/s/AKfycbwEU20fzO9P3VN5hk9NXReicDOu9f3N_yJi0rH5nSqNSkLf4Wo_zoi1AMOVCt4XozjZsw/exec';
 const esc = s => String(s || '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
-async function load() {
+let data = null, tab = 'all';
+function setTab(t) { tab = t; if (t !== 'cls') document.getElementById('cls-select').value = ''; document.getElementById('tab-all').className = t === 'all' ? 'on' : ''; document.getElementById('tab-week').className = t === 'week' ? 'on' : ''; render(); }
+function render() {
   const board = document.getElementById('board'), meta = document.getElementById('meta');
-  try {
-    const res = await fetch(RANK_API + '?limit=200&t=' + Date.now());
-    const data = await res.json();
-    const rows = (data.rows || []).filter(r => r.words > 0).sort((a, b) => b.score - a.score || a.words - b.words);
-    meta.textContent = `전체 ${rows.length}명 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준`;
-    if (!rows.length) { board.innerHTML = '<div class="empty">아직 기록이 없습니다. 첫 단어를 풀면 올라갑니다.</div>'; return; }
-    board.innerHTML = `<table><thead><tr><th>순위</th><th>이름</th><th class="num">총점</th><th class="num">단어</th><th class="num">오답</th><th class="num">최고 연속</th></tr></thead><tbody>` +
-      rows.map((r, i) => `<tr class="${i < 3 ? 'top' + (i + 1) : ''}"><td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td>${esc(r.name)}</td><td class="num score">${r.score}</td><td class="num">${r.words}</td><td class="num">${r.wrong}</td><td class="num">${r.best}</td></tr>`).join('') +
-      `</tbody></table>`;
-  } catch (e) {
-    board.innerHTML = '<div class="empty">랭킹 서버에 연결하지 못했습니다. 잠시 후 새로 고침해 보세요.</div>';
-    meta.textContent = '';
-  }
+  if (!data) return;
+  let rows = (data.rows || []).filter(r => r.words > 0);
+  const clsSel = document.getElementById('cls-select'), cls = clsSel.value;
+  const clsList = [...new Set(rows.map(r => r.cls).filter(Boolean))].sort();
+  if (clsSel.options.length !== clsList.length + 1) clsSel.innerHTML = '<option value="">반별 보기</option>' + clsList.map(c => `<option value="${esc(c)}" ${c === cls ? 'selected' : ''}>${esc(c)}</option>`).join('');
+  if (tab === 'week') rows = rows.filter(r => (r.wscore || 0) > 0).sort((a, b) => (b.wscore || 0) - (a.wscore || 0) || a.words - b.words);
+  else if (tab === 'cls' && cls) rows = rows.filter(r => r.cls === cls).sort((a, b) => b.score - a.score || a.words - b.words);
+  else rows = rows.sort((a, b) => b.score - a.score || a.words - b.words);
+  meta.textContent = `${tab === 'week' ? '이번 주(' + (data.week || '') + '~)' : tab === 'cls' && cls ? cls + ' 반' : '전체'} ${rows.length}명 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준`;
+  if (!rows.length) { board.innerHTML = `<div class="empty">${tab === 'week' ? '이번 주에는 아직 기록이 없습니다.' : '아직 기록이 없습니다. 첫 문제를 풀면 올라갑니다.'}</div>`; return; }
+  board.innerHTML = `<table><thead><tr><th>순위</th><th>이름</th><th class="num">${tab === 'week' ? '이번 주' : '총점'}</th><th class="num">문제</th><th class="num">오답</th><th class="num">최고 연속</th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr class="${i < 3 ? 'top' + (i + 1) : ''}"><td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td><td>${esc(r.name)}${r.cls ? `<span class="cls">${esc(r.cls)}</span>` : ''}</td><td class="num score">${tab === 'week' ? (r.wscore || 0) : r.score}</td><td class="num">${r.words}</td><td class="num">${r.wrong}</td><td class="num">${r.best}</td></tr>`).join('') +
+    `</tbody></table>`;
+}
+async function load() {
+  try { const res = await fetch(RANK_API + '?limit=300&t=' + Date.now()); data = await res.json(); render(); }
+  catch (e) { document.getElementById('board').innerHTML = '<div class="empty">랭킹 서버에 연결하지 못했습니다. 잠시 후 새로 고침해 보세요.</div>'; document.getElementById('meta').textContent = ''; }
 }
 load(); setInterval(load, 30000);
 </script>
