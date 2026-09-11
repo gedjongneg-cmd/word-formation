@@ -356,6 +356,13 @@ addSuffix("-ㅁ",   "지배적 접사", "'~하는 것, 상태' (앞 글자 받�
 addSuffix("-이",   "지배적 접사", "'~하는 것, 행위, 정도'", "어간(어근) → 명사");
 addSuffix("-이/부","지배적 접사", "'~하게'", "형용사 어간 → 부사");
 addSuffix("-이-",  "지배적 접사", "'그런 모양으로 움직이다'", "부사 → 동사");
+addRoots("형용사 어간", [["굳-","단단하다"],["고프-/형","배가 비어 먹고 싶다"]]);
+addRoots("동사 어간", [["떨-","붙은 것을 흔들어 떨어지게 하다"],["다투-","서로 싸우다"],["놀리-","장난으로 괴롭히다"],["앗-","빼앗다"],["거치-","무엇에 걸려 막히다"],["틀리-","맞지 않다"],["치-/동","때리다"],["닦-","문질러 깨끗하게 하다"]]);
+addRoots("명사", [["재","타고 남은 가루"],["사위/춤","춤의 동작"],["사슬","고리를 이은 줄"],["피","몸속의 붉은 액체"],["땀","살갗으로 나오는 물"],["안","속, 내부"],["곳","자리, 장소"],["틈","벌어진 사이"],["낱","하나하나"],["어이","어처구니"],["버릇","몸에 밴 습관"],["결/때","때, 사이"],["나라","국가"]]);
+addRoots("부사", [["곧추","굽히지 않고 곧게"]]);
+addRoots("동사 어간", [["주-/동","건네다"]]);
+addPrefix("엇-", "'어긋나게, 삐뚜로'"); addPrefix("들이-", "'몹시, 마구, 안으로'");
+addSuffix("-감", "한정적 접사", "'그 대상이 되는 것'", "명사 → 명사");
 addSuffix("-이-/피", "한정적 접사", "'피동: 당하다'", "동사 → 동사"); addSuffix("-히-/피", "한정적 접사", "'피동: 당하다'", "동사 → 동사"); addSuffix("-리-/피", "한정적 접사", "'피동: 당하다'", "동사 → 동사"); addSuffix("-기-/피", "한정적 접사", "'피동: 당하다'", "동사 → 동사");
 addSuffix("-이-/사", "한정적 접사", "'사동: ~하게 하다'", "동사 → 동사"); addSuffix("-히-/사", "한정적 접사", "'사동: ~하게 하다'", "동사 → 동사"); addSuffix("-리-/사", "한정적 접사", "'사동: ~하게 하다'", "동사 → 동사"); addSuffix("-기-/사", "한정적 접사", "'사동: ~하게 하다'", "동사 → 동사"); addSuffix("-우-/사", "한정적 접사", "'사동: ~하게 하다'", "동사 → 동사");
 addRoots("동사 어간", [["물-/깨물","이로 누르다"],["쌓-/동","포개어 놓다"],["놓-/동","자리에 두다"],["업-/동","등에 지다"]]);
@@ -1071,6 +1078,55 @@ const RECIPES = [
     V("입히다", "입게 하다", ["입-", "-히-/사"], { hidden: true }),
     V("안기다", "안음을 당하다", ["안-", "-기-/피"], { hidden: true }),
     V("쫓기다", "쫓음을 당하다", ["쫓-", "-기-/피"], { hidden: true }),
+    // ---- 고난도 추가 ----
+    A("굳세다", "굳고 세다", ["굳-", "세-"], { ...대등("'굳고 세다'로, 두 상태가 대등하게 이어집니다."), ...X }),
+    N("피땀", "노력과 정성", ["피", "땀"], { ...융합("'피'와 '땀'의 뜻을 넘어 '노력과 정성'이라는 새 뜻이 됩니다."), ...X }),
+    N("집안", "가족, 가문", ["집", "안"], { ...융합("'집의 안쪽'이 아니라 '가족·가문'이라는 새 뜻이 됩니다."), ...X }),
+    N("겹옷", "겹으로 지은 옷", ["겹", "옷"], 종속("'겹으로 된 옷'으로, '겹'이 '옷'을 꾸며 줍니다.")),
+    N("나들이", "집을 떠나 가까운 곳에 다녀오는 일", [{ grp: ["나-", "들-"] }, "-이"], X),
+    N("재떨이", "담뱃재를 떠는 그릇", [{ grp: ["재", "떨-"] }, "-이"], X),
+    V("뒤돌다", "뒤로 돌다", ["뒤", "돌-"], 종속("'뒤로 돌다'로, '뒤'가 '돌다'의 방향을 한정합니다.")),
+    N("울음보", "잘 우는 아이", [{ ref: "울음" }, "-보/한"]),
+    N("춤사위", "춤의 동작", [{ ref: "춤" }, "사위/춤"], { ...종속("'춤의 동작'으로, '춤'이 '사위'를 꾸며 줍니다."), chunks: [{ text: "춤", m: ["추-", "-ㅁ"] }, { text: "사위", m: ["사위/춤"] }] }),
+    N("먹이사슬", "먹고 먹히는 관계의 연결", [{ ref: "먹이" }, "사슬"], { ...종속("'먹이의 사슬'로, '먹이'가 '사슬'을 꾸며 줍니다."), ...X }),
+    N("새우잠", "새우처럼 몸을 구부리고 자는 잠", ["새우", { ref: "잠" }], { ...종속("'새우처럼 자는 잠'으로, '새우'가 '잠'을 꾸며 줍니다."), ...X, chunks: [{ text: "새우", m: ["새우"] }, { text: "잠", m: ["자-", "-ㅁ"] }] }),
+    N("꿈나라", "잠든 상태를 이르는 말", [{ ref: "꿈" }, "나라"], { ...종속("'꿈의 나라'로, '꿈'이 '나라'를 꾸며 줍니다."), chunks: [{ text: "꿈", m: ["꾸-", "-ㅁ"] }, { text: "나라", m: ["나라"] }] }),
+    N("눈물샘", "눈물이 나오는 샘", [{ ref: "눈물" }, "샘"], 종속("'눈물이 나오는 샘'으로, '눈물'이 '샘'을 꾸며 줍니다.")),
+    N("다툼", "다투는 일", ["다투-", "-ㅁ"], { chunks: [{ text: "다툼", m: ["다투-", "-ㅁ"] }] }),
+    N("말다툼", "말로 하는 다툼", ["말", { ref: "다툼" }], { ...종속("'말로 하는 다툼'으로, '말'이 '다툼'을 꾸며 줍니다."), ...X, chunks: [{ text: "말", m: ["말"] }, { text: "다툼", m: ["다투-", "-ㅁ"] }] }),
+    N("웃음거리", "웃음의 대상", [{ ref: "웃음" }, "거리"], 종속("'웃음의 거리(대상)'로, '웃음'이 '거리'를 꾸며 줍니다.")),
+    N("놀림", "놀리는 일", ["놀리-", "-ㅁ"], { chunks: [{ text: "놀림", m: ["놀리-", "-ㅁ"] }] }),
+    N("놀림감", "놀림의 대상", [{ ref: "놀림" }, "-감"], { ...X, chunks: [{ text: "놀림", m: ["놀리-", "-ㅁ"] }, { text: "감", m: ["-감"] }] }),
+    N("손놀림", "손을 놀리는 움직임", ["손", { ref: "놀림" }], { ...종속("'손의 놀림'으로, '손'이 '놀림'을 꾸며 줍니다."), chunks: [{ text: "손", m: ["손"] }, { text: "놀림", m: ["놀리-", "-ㅁ"] }] }),
+    V("빼앗다", "남의 것을 억지로 가지다", ["빼-", "앗-"], { ...대등("'빼고 앗다'로, 두 동작이 대등하게 이어집니다."), ...X }),
+    V("빼앗기다", "빼앗음을 당하다", [{ grp: ["빼-", "앗-"] }, "-기-/피"], X),
+    V("곧추서다", "꼿꼿이 서다", ["곧추", "서-"], 종속("'곧추(곧게) 서다'로, 부사 '곧추'가 '서다'를 꾸며 줍니다.")),
+    N("잠결", "잠이 어렴풋한 사이", [{ ref: "잠" }, "결/때"], { ...종속("'잠의 결(사이)'로, '잠'이 '결'을 꾸며 줍니다."), ...X, chunks: [{ text: "잠", m: ["자-", "-ㅁ"] }, { text: "결", m: ["결/때"] }] }),
+    N("꿈결", "꿈을 꾸는 사이", [{ ref: "꿈" }, "결/때"], { ...종속("'꿈의 결(사이)'로, '꿈'이 '결'을 꾸며 줍니다."), chunks: [{ text: "꿈", m: ["꾸-", "-ㅁ"] }, { text: "결", m: ["결/때"] }] }),
+    A("새롭다", "지금까지 없던 것이다", ["새", "-롭-"], X),
+    N("곳곳", "여러 곳", ["곳", "곳"], 대등("같은 말이 되풀이되어 '여러 곳'을 뜻합니다. 두 어근이 대등합니다.")),
+    AD("곳곳이", "여러 곳마다", [{ ref: "곳곳" }, "-이/부"], X),
+    N("겹겹", "여러 겹", ["겹", "겹"], 대등("같은 말이 되풀이되어 '여러 겹'을 뜻합니다.")),
+    AD("겹겹이", "여러 겹으로", [{ ref: "겹겹" }, "-이/부"], X),
+    N("틈틈", "틈이 나는 사이", ["틈", "틈"], { ...대등("같은 말이 되풀이된 대등 합성어입니다."), hidden: true }),
+    AD("틈틈이", "틈이 날 때마다", [{ ref: "틈틈" }, "-이/부"], X),
+    N("낱낱", "하나하나 모두", ["낱", "낱"], { ...대등("같은 말이 되풀이된 대등 합성어입니다."), hidden: true }),
+    AD("낱낱이", "하나하나 빠짐없이", [{ ref: "낱낱" }, "-이/부"], X),
+    A("어이없다", "너무 뜻밖이어서 기가 막히다", ["어이", "없-"], { ...종속("'어이가 없다'라는 주어+서술어 구성으로, '어이'가 '없다'의 주체를 한정합니다."), ...X }),
+    A("버릇없다", "예의가 없다", ["버릇", "없-"], 종속("'버릇이 없다'라는 주어+서술어 구성입니다.")),
+    N("틀림", "틀리는 일", ["틀리-", "-ㅁ"], { chunks: [{ text: "틀림", m: ["틀리-", "-ㅁ"] }], hidden: true }),
+    A("틀림없다", "조금도 틀리지 않다", [{ ref: "틀림" }, "없-"], { ...종속("'틀림이 없다'라는 주어+서술어 구성입니다."), ...X, chunks: [{ text: "틀림", m: ["틀리-", "-ㅁ"] }, { text: "없", m: ["없-"] }] }),
+    N("다름", "다른 것", ["다르-", "-ㅁ"], { chunks: [{ text: "다름", m: ["다르-", "-ㅁ"] }], hidden: true }),
+    A("다름없다", "서로 같다", [{ ref: "다름" }, "없-"], { ...종속("'다름이 없다'라는 주어+서술어 구성입니다."), ...X, chunks: [{ text: "다름", m: ["다르-", "-ㅁ"] }, { text: "없", m: ["없-"] }] }),
+    A("꾸밈없다", "꾸민 데가 없이 순수하다", [{ ref: "꾸밈" }, "없-"], { ...종속("'꾸밈이 없다'라는 주어+서술어 구성입니다."), chunks: [{ text: "꾸밈", m: ["꾸미-", "-ㅁ"] }, { text: "없", m: ["없-"] }] }),
+    N("거침", "걸려 막히는 일", ["거치-", "-ㅁ"], { chunks: [{ text: "거침", m: ["거치-", "-ㅁ"] }], hidden: true }),
+    A("거침없다", "막힘이 없다", [{ ref: "거침" }, "없-"], { ...종속("'거침이 없다'라는 주어+서술어 구성입니다."), ...X, chunks: [{ text: "거침", m: ["거치-", "-ㅁ"] }, { text: "없", m: ["없-"] }] }),
+    N("빈틈", "비어 있는 틈", ["비-", "-ㄴ", "틈"], { ...종속("'빈(비어 있는) 틈'으로, '빈'이 '틈'을 꾸며 줍니다."), chunks: [{ text: "빈", m: ["비-", "-ㄴ"] }, { text: "틈", m: ["틈"] }] }),
+    A("빈틈없다", "허술한 데가 없다", [{ ref: "빈틈" }, "없-"], { ...종속("'빈틈이 없다'라는 주어+서술어 구성입니다."), ...X, chunks: [{ text: "빈", m: ["비-", "-ㄴ"] }, { text: "틈", m: ["틈"] }, { text: "없", m: ["없-"] }] }),
+    V("내리치다", "위에서 아래로 힘껏 치다", ["내리-", "치-/동"], { ...종속("'내리(아래로) 치다'로, 앞 어간이 뒤 동작의 방향을 한정합니다."), ...X }),
+    V("들이받다", "머리를 들이대어 받다", ["들이-", "받-"], X),
+    V("갈고닦다", "학문이나 재주를 힘써 익히다", ["갈-", "-고", "닦-"], { ...대등("'갈고 닦다'로, 두 동작이 대등하게 이어집니다."), ...X }),
+    V("주고받다", "서로 주기도 하고 받기도 하다", ["주-/동", "-고", "받-"], { ...대등("'주고 받다'로, 두 동작이 대등하게 이어집니다."), ...X }),
 ];
 
 /* =====================================================================
@@ -2166,6 +2222,8 @@ function sadd(key, cat, gloss, extra = {}) { const form = key.split('/')[0]; SBA
 [["이/관","가까운 것을 가리킴"]].forEach(([k,g]) => sadd(k, "관형사", g));
 [["-였-","과거 시제('-었-'의 이형태, '하-' 뒤)"]].forEach(([k,g]) => sadd(k, "선어말 어미", g));
 [["-으라/말","종결 어미(명령, 간접 인용)"],["-도록/연","연결 어미(정도·한계, 부사절)"],["-게/연","연결 어미(부사절)"],["-니/연","연결 어미(원인)"],["-아서/연","연결 어미(원인·계기)"],["-어서/연","연결 어미(원인·계기)"],["-으려고/연","연결 어미(의도)"],["-자/연","연결 어미(계기)"]].forEach(([k,g]) => sadd(k, "어말 어미", g));
+[["끄-/동","불을 없애다"],["캐-/동","땅에서 파내다"],["무치-/동","나물에 양념을 섞다"],["뜨-/해","해나 달이 솟아오르다"]].forEach(([k,g]) => sadd(k, "동사 어간", g));
+[["위/명","높은 쪽"]].forEach(([k,g]) => sadd(k, "명사", g));
 [["물-/깨물","이로 누르다"],["쌓-/동","포개어 놓다"],["사-/구매","값을 주고 얻다"],["신-/동","발에 꿰다"],["놓-/동","자리에 두다"],["만들-/동","새로 생기게 하다"],["하-/동","행하다"],["업-/동","등에 지다"]].forEach(([k,g]) => sadd(k, "동사 어간", g));
 
 const SCAT = {
@@ -2297,6 +2355,26 @@ const SENTENCES = [
   { t: "나는 누나가 만든 옷을 입었다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'누나가 만든'이 '옷'을 꾸미는 관형절입니다. 안긴문장 안에 주어 '누나가'가 있습니다."}, tense: 과거, why: "서술어 '입었다'에 과거 '-었-'이 있습니다. '만든'은 '만들-'에 관형사형 어미 '-ㄴ'이 붙으며 ㄹ이 탈락한 것입니다.", exam: true, e: [["나:나/대", "는:는/조"], ["누나:누나/명", "가:가/조"], ["만든:만들-/동,-ㄴ/관"], ["옷:옷", "을:을/조"], ["입:입-|었:-었-|다:-다/말"]] },
   { t: "우리는 비가 온 날에 집에서 놀았다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'비가 온'이 '날'을 꾸미는 관형절입니다."}, tense: 과거, why: "서술어 '놀았다'에 과거 '-았-'이 있습니다. '온'은 '오-'에 관형사형 어미 '-ㄴ'이 붙은 것입니다.", exam: true, e: [["우리:우리", "는:는/조"], ["비:비", "가:가/조"], ["온:오-,-ㄴ/관"], ["날:날", "에:에/조"], ["집:집", "에서:에서/조"], ["놀:놀-|았:-았-|다:-다/말"]] },
   { t: "아이는 엄마가 준 책을 읽는다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'엄마가 준'이 '책'을 꾸미는 관형절입니다."}, tense: 현재, why: "'읽는다'에 현재 '-는-'이 있습니다. '준'은 '주-'에 관형사형 어미 '-ㄴ'이 붙은 것입니다.", exam: true, e: [["아이:아이", "는:는/조"], ["엄마:엄마/명", "가:가/조"], ["준:주-/동,-ㄴ/관"], ["책:책", "을:을/조"], ["읽:읽-|는:-는-/현|다:-다/말"]] },
+  { t: "누나는 아이가 만든 눈사람을 보고 웃었다", st: {"k": "이어진", "rel": "종속", "link": 4, "mean": "계기", "why": "'보고'의 '-고'는 시간 순서(계기)를 나타내므로 종속적으로 이어진 문장입니다. 앞 절 안에는 '아이가 만든'이라는 관형절이 '눈사람'을 꾸미며 안겨 있습니다.", "types": ["관형절"], "parts": [1, 2]}, tense: 과거, why: "서술어 '웃었다'에 과거 '-었-'이 있습니다. '만든'은 '만들-'에 관형사형 어미 '-ㄴ'이 붙으며 ㄹ이 탈락한 것입니다.", exam: true, comp: {"눈사람": "눈사람"}, e: [["누나:누나/명", "는:는/조"], ["아이:아이", "가:가/조"], ["만든:만들-/동,-ㄴ/관"], ["눈:눈/눈|사람:사람", "을:을/조"], ["보:보-|고:-고/연"], ["웃:웃-|었:-었-|다:-다/말"]] },
+  { t: "엄마는 아기가 잠든 뒤에 불을 껐다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'아기가 잠든'이 명사 '뒤'를 꾸미는 관형절입니다."}, tense: 과거, why: "'껐다'의 '껐'은 '끄-'에 과거 '-었-'이 붙어 줄어든 것입니다. '잠든'은 '잠들-'에 관형사형 어미 '-ㄴ'이 붙으며 ㄹ이 탈락한 것입니다.", exam: true, comp: {"잠든": "잠들다"}, e: [["엄마:엄마/명", "는:는/조"], ["아기:아기/명", "가:가/조"], ["잠:자-,-ㅁ|든:들-,-ㄴ/관"], ["뒤:뒤", "에:에/조"], ["불:불", "을:을/조"], ["껐:끄-/동,-었-|다:-다/말"]] },
+  { t: "아이는 개에게 물린 손이 아프다고 말했다", st: {"k": "안은", "types": ["인용절", "관형절"], "parts": [1, 2, 3, 4], "why": "'개에게 물린 손이 아프다'가 인용격 조사 '고'가 붙은 인용절이고, 그 안에서 '개에게 물린'이 '손'을 꾸미는 관형절입니다. 절 속에 절이 겹쳐 안겨 있습니다."}, tense: 과거, why: "서술어 '말했다'에 과거 '-였-'이 있습니다. '물린'의 '린'은 피동 접미사 '-리-'와 관형사형 어미 '-ㄴ'이 한 글자에 든 것입니다.", exam: true, comp: {"말했다": "말하다"}, e: [["아이:아이", "는:는/조"], ["개:개", "에게:에게/조"], ["물:물-/깨물|린:-리-/피,-ㄴ/관"], ["손:손", "이:이/조"], ["아프:아프-|다:-다/말", "고:고/조"], ["말:말|했:-하-,-였-|다:-다/말"]] },
+  { t: "할머니께서는 아이가 크기를 바라셨다", st: {"k": "안은", "types": ["명사절"], "parts": [1, 2], "why": "'아이가 크기'는 명사형 어미 '-기'가 붙어 목적어 노릇을 하는 명사절입니다. '할머니께서는'에는 조사 '께서'와 '는'이 겹쳐 붙었습니다."}, tense: 과거, why: "'바라셨다'의 '셨'은 높임 '-시-'와 과거 '-었-'이 줄어든 것입니다. '크기'의 '-기'는 명사형 어미입니다.", exam: true, e: [["할머니:할머니", "께서:께서/조", "는:는/조"], ["아이:아이", "가:가/조"], ["크:크-|기:-기/명", "를:를/조"], ["바라:바라-/동|셨:-시-,-었-|다:-다/말"]] },
+  { t: "나는 누나가 부르는 노래를 듣고 잠들었다", st: {"k": "이어진", "rel": "종속", "link": 4, "mean": "계기", "why": "'듣고'의 '-고'는 시간 순서(계기)를 나타내므로 종속적으로 이어진 문장입니다. 앞 절 안에는 '누나가 부르는'이 '노래'를 꾸미는 관형절로 안겨 있습니다.", "types": ["관형절"], "parts": [1, 2]}, tense: 과거, why: "서술어 '잠들었다'에 과거 '-었-'이 있습니다. '부르는'의 '-는'은 관형사형 어미입니다.", exam: true, comp: {"잠들었다": "잠들다"}, e: [["나:나/대", "는:는/조"], ["누나:누나/명", "가:가/조"], ["부르:부르-/동|는:-는/관"], ["노래:노래", "를:를/조"], ["듣:듣-|고:-고/연"], ["잠:자-,-ㅁ|들:들-|었:-었-|다:-다/말"]] },
+  { t: "아이가 울자 엄마는 아이를 품에 안았다", st: {"k": "이어진", "rel": "종속", "link": 1, "mean": "계기", "why": "'울자'의 '-자'는 계기를 나타내므로 종속적으로 이어진 문장입니다."}, tense: 과거, why: "서술어 '안았다'에 과거 '-았-'이 있습니다. '-자'는 앞일에 이어 뒷일이 일어남을 나타내는 연결 어미입니다.", exam: true, e: [["아이:아이", "가:가/조"], ["울:울-|자:-자/연"], ["엄마:엄마/명", "는:는/조"], ["아이:아이", "를:를/조"], ["품:품/명", "에:에/조"], ["안:안-|았:-았-|다:-다/말"]] },
+  { t: "눈이 오면 아이들은 눈싸움을 하기를 바란다", st: {"k": "이어진", "rel": "종속", "link": 1, "mean": "조건", "why": "'오면'의 '-면'은 조건을 나타내므로 종속적으로 이어진 문장입니다. 뒤 절 안에는 '눈싸움을 하기'라는 명사절이 목적어로 안겨 있습니다.", "types": ["명사절"], "parts": [3, 4]}, tense: 현재, why: "'바란다'의 '란'은 '바라-'에 현재 '-ㄴ-'이 붙은 것입니다.", exam: true, comp: {"아이들": "아이들", "눈싸움": "눈싸움"}, e: [["눈:눈", "이:이/조"], ["오:오-|면:-면/연"], ["아이:아이|들:-들", "은:은/조"], ["눈:눈/눈|싸움:싸우-,-ㅁ", "을:을/조"], ["하:하-/동|기:-기/명", "를:를/조"], ["바란:바라-/동,-ㄴ-/현|다:-다/말"]] },
+  { t: "그는 아이가 웃는 소리를 듣고 눈을 떴다", st: {"k": "이어진", "rel": "종속", "link": 4, "mean": "계기", "why": "'듣고'의 '-고'는 시간 순서(계기)를 나타내므로 종속적으로 이어진 문장입니다. 앞 절 안에는 '아이가 웃는'이 '소리'를 꾸미는 관형절로 안겨 있습니다.", "types": ["관형절"], "parts": [1, 2]}, tense: 과거, why: "'떴다'의 '떴'은 '뜨-'에 과거 '-었-'이 붙어 줄어든 것입니다.", exam: true, e: [["그:그/대", "는:는/조"], ["아이:아이", "가:가/조"], ["웃:웃-|는:-는/관"], ["소리:소리", "를:를/조"], ["듣:듣-|고:-고/연"], ["눈:눈", "을:을/조"], ["떴:뜨-/동2,-었-|다:-다/말"]] },
+  { t: "물이 얼음이 되면 아이들은 얼음 위에서 논다", st: {"k": "이어진", "rel": "종속", "link": 2, "mean": "조건", "why": "'되면'의 '-면'은 조건을 나타내므로 종속적으로 이어진 문장입니다."}, tense: 현재, why: "'논다'의 '논'은 '놀-'에 현재 '-ㄴ-'이 붙으며 ㄹ이 탈락한 것입니다.", exam: true, comp: {"얼음": "얼음", "아이들": "아이들"}, e: [["물:물", "이:이/조"], ["얼:얼-|음:-음", "이:이/조"], ["되:되-/동|면:-면/연"], ["아이:아이|들:-들", "은:은/조"], ["얼:얼-|음:-음"], ["위:위/명", "에서:에서/조"], ["논:놀-,-ㄴ-/현|다:-다/말"]] },
+  { t: "우리는 해가 뜨기를 기다렸다", st: {"k": "안은", "types": ["명사절"], "parts": [1, 2], "why": "'해가 뜨기'는 명사형 어미 '-기'가 붙은 명사절입니다."}, tense: 과거, why: "'기다렸다'의 '렸'은 '기다리-'에 과거 '-었-'이 붙어 줄어든 것입니다.", exam: true, e: [["우리:우리", "는:는/조"], ["해:해", "가:가/조"], ["뜨:뜨-/해|기:-기/명", "를:를/조"], ["기다렸:기다리-/동,-었-|다:-다/말"]] },
+  { t: "할머니께서 주신 옷을 입은 아이가 웃는다", st: {"k": "안은", "types": ["관형절"], "parts": [0, 1, 2, 3], "why": "'할머니께서 주신 옷을 입은'이 '아이'를 꾸미는 관형절이고, 그 안에서 '할머니께서 주신'이 다시 '옷'을 꾸미는 관형절입니다. 관형절 속에 관형절이 겹쳐 있습니다."}, tense: 현재, why: "'웃는다'에 현재 '-는-'이 있습니다. '주신'의 '신'은 높임 '-시-'와 관형사형 어미 '-ㄴ'이 한 글자에 든 것입니다.", exam: true, e: [["할머니:할머니", "께서:께서/조"], ["주:주-/동|신:-시-,-ㄴ/관"], ["옷:옷", "을:을/조"], ["입:입-|은:-은/관"], ["아이:아이", "가:가/조"], ["웃:웃-|는:-는-/현|다:-다/말"]] },
+  { t: "누나는 아이가 잠들었다고 말했다", st: {"k": "안은", "types": ["인용절"], "parts": [1, 2], "why": "'아이가 잠들었다'에 인용격 조사 '고'가 붙은 인용절입니다."}, tense: 과거, why: "서술어 '말했다'에 과거 '-였-'이 있고, 인용절 안의 '잠들었다'에도 과거 '-었-'이 있습니다.", exam: true, comp: {"잠들었다": "잠들다", "말했다": "말하다"}, e: [["누나:누나/명", "는:는/조"], ["아이:아이", "가:가/조"], ["잠:자-,-ㅁ|들:들-|었:-었-|다:-다/말", "고:고/조"], ["말:말|했:-하-,-였-|다:-다/말"]] },
+  { t: "아기가 배가 고파서 울었다", st: {"k": "이어진", "rel": "종속", "link": 2, "mean": "원인", "why": "'고파서'의 '-아서'는 원인을 나타내므로 종속적으로 이어진 문장입니다. 앞 절 '아기가 배가 고프다'는 '배가 고프다'가 서술절로 안긴 문장입니다.", "types": ["서술절"], "parts": [1, 2]}, tense: 과거, why: "서술어 '울었다'에 과거 '-었-'이 있습니다. '고파서'는 '고프-'에 연결 어미 '-아서'가 붙어 줄어든 것입니다.", exam: true, e: [["아기:아기/명", "가:가/조"], ["배:배/몸", "가:가/조"], ["고파서:고프-/형,-아서/연"], ["울:울-|었:-었-|다:-다/말"]] },
+  { t: "나는 그가 만든 새우튀김을 먹었다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'그가 만든'이 '새우튀김'을 꾸미는 관형절입니다."}, tense: 과거, why: "서술어 '먹었다'에 과거 '-었-'이 있습니다.", exam: true, comp: {"새우튀김": "새우튀김"}, e: [["나:나/대", "는:는/조"], ["그:그/대", "가:가/조"], ["만든:만들-/동,-ㄴ/관"], ["새우:새우|튀김:튀기-,-ㅁ", "을:을/조"], ["먹:먹-|었:-었-|다:-다/말"]] },
+  { t: "엄마는 아이가 눈을 뜬 채로 잠들었음을 알았다", st: {"k": "안은", "types": ["명사절", "관형절"], "parts": [1, 2, 3, 4, 5], "why": "'아이가 눈을 뜬 채로 잠들었음'이 목적어 노릇을 하는 명사절이고, 그 안에서 '눈을 뜬'이 의존 명사 '채'를 꾸미는 관형절입니다."}, tense: 과거, why: "서술어 '알았다'에 과거 '-았-'이 있습니다. '잠들었음'은 과거 '-었-'에 명사형 어미 '-음'이 붙은 것입니다.", exam: true, comp: {"잠들었음": "잠들다"}, e: [["엄마:엄마/명", "는:는/조"], ["아이:아이", "가:가/조"], ["눈:눈", "을:을/조"], ["뜬:뜨-/동2,-ㄴ/관"], ["채:채/명", "로:로/조"], ["잠:자-,-ㅁ|들:들-|었:-었-|음:-음/명", "을:을/조"], ["알:알-|았:-았-|다:-다/말"]] },
+  { t: "할머니께서는 밭에서 캐신 나물을 무치셨다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'밭에서 캐신'이 '나물'을 꾸미는 관형절입니다. 주어 '할머니께서는'이 생략된 채 안겨 있습니다."}, tense: 과거, why: "'무치셨다'의 '셨'은 높임 '-시-'와 과거 '-었-'이 줄어든 것입니다. '캐신'의 '신'은 높임 '-시-'와 관형사형 어미 '-ㄴ'이 한 글자에 든 것입니다.", exam: true, e: [["할머니:할머니", "께서:께서/조", "는:는/조"], ["밭:밭", "에서:에서/조"], ["캐:캐-/동|신:-시-,-ㄴ/관"], ["나물:나물", "을:을/조"], ["무치:무치-/동|셨:-시-,-었-|다:-다/말"]] },
+  { t: "누나가 부른 노래를 듣고 아이가 울었다", st: {"k": "이어진", "rel": "종속", "link": 3, "mean": "계기", "why": "'듣고'의 '-고'는 시간 순서(계기)를 나타내므로 종속적으로 이어진 문장입니다. 앞 절 안에는 '누나가 부른'이 '노래'를 꾸미는 관형절로 안겨 있습니다.", "types": ["관형절"], "parts": [0, 1]}, tense: 과거, why: "서술어 '울었다'에 과거 '-었-'이 있습니다. '부른'은 '부르-'에 관형사형 어미 '-ㄴ'이 붙은 것입니다.", exam: true, e: [["누나:누나/명", "가:가/조"], ["부른:부르-/동,-ㄴ/관"], ["노래:노래", "를:를/조"], ["듣:듣-|고:-고/연"], ["아이:아이", "가:가/조"], ["울:울-|었:-었-|다:-다/말"]] },
+  { t: "아이는 손이 아프도록 눈사람을 만들었다", st: {"k": "안은", "types": ["부사절"], "parts": [1, 2], "why": "'손이 아프도록'이 서술어 '만들었다'를 꾸미는 부사절입니다."}, tense: 과거, why: "서술어 '만들었다'에 과거 '-었-'이 있습니다.", exam: true, comp: {"눈사람": "눈사람"}, e: [["아이:아이", "는:는/조"], ["손:손", "이:이/조"], ["아프:아프-|도록:-도록/연"], ["눈:눈/눈|사람:사람", "을:을/조"], ["만들:만들-/동|었:-었-|다:-다/말"]] },
+  { t: "누나는 노래를 부르고 아이는 춤을 춘다", st: {"k": "이어진", "rel": "대등", "link": 2, "mean": "나열", "why": "'부르고'의 '-고'는 두 절을 나란히 벌인 나열이므로 대등하게 이어진 문장입니다."}, tense: 현재, why: "'춘다'의 '춘'은 '추-'에 현재 '-ㄴ-'이 붙은 것입니다. '춤'은 '추-'에 접미사 '-ㅁ'이 붙은 파생어입니다.", exam: true, comp: {"춤": "춤"}, e: [["누나:누나/명", "는:는/조"], ["노래:노래", "를:를/조"], ["부르:부르-/동|고:-고/연"], ["아이:아이", "는:는/조"], ["춤:추-,-ㅁ", "을:을/조"], ["춘:추-,-ㄴ-/현|다:-다/말"]] },
+  { t: "해가 지자 아이들은 집으로 돌아왔다", st: {"k": "이어진", "rel": "종속", "link": 1, "mean": "계기", "why": "'지자'의 '-자'는 계기를 나타내므로 종속적으로 이어진 문장입니다."}, tense: 과거, why: "'돌아왔다'의 '왔'은 '오-'에 과거 '-았-'이 붙어 줄어든 것입니다.", exam: true, comp: {"아이들": "아이들", "돌아왔다": "돌아오다"}, e: [["해:해", "가:가/조"], ["지:지-/동|자:-자/연"], ["아이:아이|들:-들", "은:은/조"], ["집:집", "으로:으로/조"], ["돌:돌-|아:-아/연|왔:오-,-았-|다:-다/말"]] },
   { t: "아이가 눈을 감은 채로 노래를 한다", st: {"k": "안은", "types": ["관형절"], "parts": [1, 2], "why": "'눈을 감은'이 의존 명사 '채'를 꾸미는 관형절입니다."}, tense: 현재, why: "서술어 '한다'의 '한'은 어간 '하-'에 현재 '-ㄴ-'이 받침으로 붙은 것입니다. '채'는 의존 명사입니다.", exam: true, e: [["아이:아이","가:가/조"],["눈:눈","을:을/조"],["감:감-|은:-은/관"],["채:채/명","로:로/조"],["노래:노래","를:를/조"],["한:하-/동,-ㄴ-/현|다:-다/말"]] },
 ];
 
@@ -2343,7 +2421,7 @@ function loadSentence(i) {
     s4 = { auto: new Array(S.morphs.length).fill(null), mean: new Array(S.morphs.length).fill(null), okA: new Set(), okM: new Set(), badA: new Set(), badM: new Set(), done: false };
     s5 = { tense: null, voice: S.words.map(() => null), done: false, badT: false, badV: new Set() };
     s6 = { picked: new Set(), ok: false, queue: [], cur: null, path: [], sub: null, done: [] };
-    s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, done: false };
+    s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, linkOk: false, done: false };
     const sel = document.getElementById('word-selector');
     sel.innerHTML = SPROBLEMS.map((p, k) => `<option value="${k}">${k + 1}. ${p.text}</option>`).join('');
     sel.value = i;
@@ -2618,7 +2696,7 @@ function sReveal() {
     else if (sPhase === 4) { S.morphs.forEach((m, i) => { s4.auto[i] = m.auto; s4.mean[i] = m.mean; s4.okA.add(i); s4.okM.add(i); }); text = `자립 ${S.counts.auto} · 의존 ${S.counts.dep} / 실질 ${S.counts.real} · 형식 ${S.counts.form}\n\n검증 버튼을 누르세요.`; }
     else if (sPhase === 5) { s5.tense = S.tense; S.words.forEach((w, i) => { if (w.hasStem) s5.voice[i] = w.voice; }); text = `시제: ${S.tense}\n` + S.words.filter(w => w.hasStem).map(w => `'${w.text}': ${w.voice}`).join('\n') + '\n\n검증 버튼을 누르세요.'; }
     else if (sPhase === 6) { if (s6.cur) { const sub = s6.cur.sub, ans = sub.treeAnswers[s6.cur.path.length]; text = `정답: ${ans}`; window.s6Pick(s6.cur.path.length, treeSteps(s6.cur.path)[s6.cur.path.length].options.indexOf(ans)); return showAnswerModal(text); } else { s6.picked = new Set(contentWords().filter(x => x.w.comp).map(x => x.i)); text = '복합어: ' + (contentWords().filter(x => x.w.comp).map(x => x.w.text).join(', ') || '없음') + '\n\n검증 버튼을 누르세요.'; } }
-    else if (sPhase === 7) { const st = S.st, steps = s7Steps(); if (s7.path.length < steps.length) { const sp = steps[s7.path.length]; s7.path.push(sp.ans); text = `정답: ${sp.ans}`; } else if (st.k === '안은' && !s7.typesOk) { s7.types = new Set(st.types); text = `안긴문장 종류: ${[...st.types].join(', ')}\n\n검증 버튼을 누르세요.`; } else if (!s7.partsOk) { s7.parts = st.k === '안은' ? new Set(st.parts) : new Set([st.link]); text = (st.k === '안은' ? `안긴문장: '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}'` : `연결 어미가 있는 어절: '${S.eojeols[st.link].text}'`) + '\n\n검증 버튼을 누르세요.'; } else return; }
+    else if (sPhase === 7) { const st = S.st, steps = s7Steps(); if (s7.path.length < steps.length) { const sp = steps[s7.path.length]; s7.path.push(sp.ans); text = `정답: ${sp.ans}`; } else if (st.k === '이어진' && !s7.linkOk) { s7.link = st.link; text = `연결 어미가 있는 어절: '${S.eojeols[st.link].text}'\n\n검증 버튼을 누르세요.`; } else if (st.types.size && !s7.typesOk) { s7.types = new Set(st.types); text = `안긴문장 종류: ${[...st.types].join(', ')}\n\n검증 버튼을 누르세요.`; } else if (st.types.size && !s7.partsOk) { s7.parts = new Set(st.parts); text = `안긴문장: '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}'\n\n검증 버튼을 누르세요.`; } else return; }
     else return;
     sRenderApp(); showAnswerModal(text);
 }
@@ -2658,13 +2736,13 @@ document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     const anyModal = ['explanation-modal', 'guide-modal', 'theme-modal', 'rank-modal'].some(id => !document.getElementById(id).classList.contains('hidden'));
     if (anyModal || !document.getElementById('start-screen').classList.contains('hidden')) return;
-    if (sPhase === 1) s1Validate(); else if (sPhase === 2 && !s2.cur) s2Validate(); else if (sPhase === 3) s3Validate(); else if (sPhase === 4) { s4.done ? s4Next() : s4Validate(); } else if (sPhase === 5) { s5.done ? s5Next() : s5Validate(); } else if (sPhase === 6 && !s6.cur) { s6.ok ? (s6.queue.length ? s6StartTree() : s7Start()) : s6Validate(); } else if (sPhase === 7) { if (s7Ready()) sFinish(); else if (S.st.k === '안은' && s7.path.length === 2 && !s7.typesOk) s7ValidateTypes(); else if (s7.path.length === s7Steps().length && !s7.partsOk) s7ValidateParts(); } else if (sPhase === 8) sNext();
+    if (sPhase === 1) s1Validate(); else if (sPhase === 2 && !s2.cur) s2Validate(); else if (sPhase === 3) s3Validate(); else if (sPhase === 4) { s4.done ? s4Next() : s4Validate(); } else if (sPhase === 5) { s5.done ? s5Next() : s5Validate(); } else if (sPhase === 6 && !s6.cur) { s6.ok ? (s6.queue.length ? s6StartTree() : s7Start()) : s6Validate(); } else if (sPhase === 7) { if (s7Ready()) sFinish(); else if (s7.path.length === s7Steps().length) { if (S.st.k === '이어진' && !s7.linkOk) s7ValidateLink(); else if (S.st.types.size && !s7.typesOk) s7ValidateTypes(); else if (!s7.partsOk) s7ValidateParts(); } } else if (sPhase === 8) sNext();
 });
 
 
 /* ---- 7단계: 문장의 짜임 (홑문장·겹문장 → 안은·이어진 → 종류/대등·종속 → 어절) ---- */
 const CLAUSE_TYPES = ["명사절", "관형절", "부사절", "서술절", "인용절"];
-function s7Start() { sPhase = 7; s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, done: false }; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0); }
+function s7Start() { sPhase = 7; s7 = { path: [], types: new Set(), typesOk: false, parts: new Set(), partsOk: false, link: null, linkOk: false, done: false }; sRenderPhaseBar(); sRenderApp(); window.scrollTo(0, 0); }
 function s7Steps() {
     const st = S.st, steps = [{ title: "1. 주어와 서술어의 관계가 몇 번 나타나는가", options: ["홑문장", "겹문장"], ans: st.k === '홑' ? '홑문장' : '겹문장' }];
     if (st.k === '홑') return steps;
@@ -2672,7 +2750,7 @@ function s7Steps() {
     if (st.k === '이어진') steps.push({ title: "3. 앞 절과 뒤 절의 관계", options: ["대등하게 이어진 문장", "종속적으로 이어진 문장"], ans: st.rel === '대등' ? '대등하게 이어진 문장' : '종속적으로 이어진 문장' });
     return steps;
 }
-function s7Ready() { const st = S.st; if (st.k === '홑') return s7.path.length === 1; if (st.k === '안은') return s7.path.length === 2 && s7.typesOk && s7.partsOk; return s7.path.length === 3 && s7.partsOk; }
+function s7Ready() { const st = S.st; if (st.k === '홑') return s7.path.length === 1; if (st.k === '안은') return s7.path.length === 2 && s7.typesOk && s7.partsOk; return s7.path.length === 3 && s7.linkOk && (!st.types.size || (s7.typesOk && s7.partsOk)); }
 function sRender7() {
     const st = S.st, steps = s7Steps();
     let body = `<div class="w-full flex flex-col items-center space-y-1">`;
@@ -2686,24 +2764,28 @@ function sRender7() {
     });
     body += `</div>`;
     if (s7.path.length === steps.length) {
+        const typesBox = n => `<div class="w-full bg-slate-950 border ${s7.typesOk ? 'border-emerald-500/60' : 'border-indigo-500/60'} p-3 rounded-xl flex flex-col items-center space-y-2 mt-2"><div class="text-[11px] font-bold text-slate-400">${n}. ${st.k === '이어진' ? '절 안에 안긴문장이 있습니다. ' : ''}안긴문장의 종류 (해당하는 것을 모두 고르기)</div><div class="flex flex-wrap gap-2 justify-center">${CLAUSE_TYPES.map(t => `<button ${s7.typesOk ? 'disabled' : ''} onclick="s7Type('${t}')" class="pick ${s7.typesOk ? (st.types.has(t) ? 'ok' : '') : s7.types.has(t) ? 'on' : ''} px-4 py-2 rounded-xl text-xs font-black border border-slate-600 bg-slate-800 text-slate-200">${t}</button>`).join('')}</div>${s7.typesOk ? '' : primaryBtn('s7ValidateTypes()', '종류 검증')}</div>`;
         if (st.k === '안은') {
-            body += `<div class="w-full bg-slate-950 border ${s7.typesOk ? 'border-emerald-500/60' : 'border-indigo-500/60'} p-3 rounded-xl flex flex-col items-center space-y-2 mt-2"><div class="text-[11px] font-bold text-slate-400">${st.k === '안은' ? '3' : '4'}. 안긴문장의 종류 (해당하는 것을 모두 고르기)</div><div class="flex flex-wrap gap-2 justify-center">${CLAUSE_TYPES.map(t => `<button ${s7.typesOk ? 'disabled' : ''} onclick="s7Type('${t}')" class="pick ${s7.typesOk ? (st.types.has(t) ? 'ok' : '') : s7.types.has(t) ? 'on' : ''} px-4 py-2 rounded-xl text-xs font-black border border-slate-600 bg-slate-800 text-slate-200">${t}</button>`).join('')}</div>${s7.typesOk ? '' : primaryBtn('s7ValidateTypes()', '종류 검증')}</div>`;
+            body += typesBox(3);
             if (s7.typesOk) body += s7PartsBox(`4. 안긴문장을 이루는 어절 (모두 고르기)`, true);
-        } else if (st.k === '이어진') body += s7PartsBox(`4. 앞 절과 뒤 절을 이어 주는 연결 어미가 있는 어절`, false);
+        } else if (st.k === '이어진') {
+            body += s7PartsBox(`4. 앞 절과 뒤 절을 이어 주는 연결 어미가 있는 어절`, false);
+            if (s7.linkOk && st.types.size) { body += typesBox(5); if (s7.typesOk) body += s7PartsBox(`6. 안긴문장을 이루는 어절 (모두 고르기)`, true); }
+        }
     }
     if (s7Ready()) body += `<div class="w-full bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-3 text-xs text-emerald-200 text-center mt-2">${s7Summary()}</div>` + primaryBtn('sFinish()', '문장 분석 완료');
     body += `<p class="hint text-[11px] text-slate-500 text-center mt-2">주어-서술어 관계가 한 번이면 홑문장, 두 번 이상이면 겹문장. 겹문장은 안은문장(명사절·관형절·부사절·서술절·인용절)과 이어진문장(대등: 나열·대조·선택 / 종속: 조건·원인·계기·의도 등)으로 나뉩니다.</p>`;
     return card("7단계: 문장의 짜임", "fa-diagram-project", "이 문장이 홑문장인지 겹문장인지, 겹문장이라면 어떻게 짜였는지 분류하세요.", body, 'max-w-3xl');
 }
 function s7PartsBox(title, multi) {
-    const st = S.st, ok = s7.partsOk;
-    return `<div class="w-full bg-slate-950 border ${ok ? 'border-emerald-500/60' : 'border-indigo-500/60'} p-3 rounded-xl flex flex-col items-center space-y-2 mt-2"><div class="text-[11px] font-bold text-slate-400">${title}</div><div class="flex flex-wrap gap-2 justify-center">${S.eojeols.map((e, i) => { const exp = multi ? st.parts.has(i) : st.link === i; return `<button ${ok ? 'disabled' : ''} onclick="s7Part(${i},${multi})" class="pick ${ok ? (exp ? 'ok' : '') : s7.parts.has(i) ? 'on' : ''} px-4 py-2 rounded-xl text-sm font-black border border-slate-600 bg-slate-800 text-slate-200">${e.text}</button>`; }).join('')}</div>${ok ? '' : primaryBtn('s7ValidateParts()', '어절 검증')}</div>`;
+    const st = S.st, ok = multi ? s7.partsOk : s7.linkOk, sel = multi ? s7.parts : new Set(s7.link === null ? [] : [s7.link]);
+    return `<div class="w-full bg-slate-950 border ${ok ? 'border-emerald-500/60' : 'border-indigo-500/60'} p-3 rounded-xl flex flex-col items-center space-y-2 mt-2"><div class="text-[11px] font-bold text-slate-400">${title}</div><div class="flex flex-wrap gap-2 justify-center">${S.eojeols.map((e, i) => { const exp = multi ? st.parts.has(i) : st.link === i; return `<button ${ok ? 'disabled' : ''} onclick="s7Part(${i},${multi})" class="pick ${ok ? (exp ? 'ok' : '') : sel.has(i) ? 'on' : ''} px-4 py-2 rounded-xl text-sm font-black border border-slate-600 bg-slate-800 text-slate-200">${e.text}</button>`; }).join('')}</div>${ok ? '' : primaryBtn(multi ? 's7ValidateParts()' : 's7ValidateLink()', '어절 검증')}</div>`;
 }
 function s7Summary() {
     const st = S.st;
     if (st.k === '홑') return `<b>홑문장</b> · ${st.why}`;
     if (st.k === '안은') return `<b>겹문장 → 안은문장</b> · ${[...st.types].join(', ')} '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}' · ${st.why}`;
-    return `<b>겹문장 → ${st.rel === '대등' ? '대등하게' : '종속적으로'} 이어진 문장</b> (${st.mean}) · ${st.why}`;
+    return `<b>겹문장 → ${st.rel === '대등' ? '대등하게' : '종속적으로'} 이어진 문장</b> (${st.mean})${st.types.size ? ` · 안긴문장 ${[...st.types].join(', ')} '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}'` : ''} · ${st.why}`;
 }
 window.s7Pick = (lv, k) => {
     const sp = s7Steps()[lv], choice = sp.options[k];
@@ -2712,7 +2794,7 @@ window.s7Pick = (lv, k) => {
     const st = S.st;
     let msg = '';
     if (lv === 0) msg = st.k === '홑' ? `${eunNeun(S.text)} 주어와 서술어의 관계가 한 번만 나타나는 홑문장입니다. 관형사·부사가 꾸미는 말이 있어도 서술어가 하나면 홑문장이에요.` : `${eunNeun(S.text)} 주어-서술어 관계가 두 번 이상 나타나는 겹문장입니다. ${st.why}`;
-    else if (lv === 1) msg = st.k === '안은' ? `한 문장이 다른 문장 속에 절(성분)로 안겨 있으므로 안은문장입니다. ${st.why}` : `두 절이 연결 어미로 나란히 이어져 있으므로 이어진문장입니다. ${st.why}`;
+    else if (lv === 1) msg = st.k === '안은' ? `한 문장이 다른 문장 속에 절(성분)로 안겨 있으므로 안은문장입니다. ${st.why}` : `문장 전체는 두 절이 연결 어미로 이어진 이어진문장입니다.${st.types.size ? ' 안긴문장은 그 절 안에 들어 있을 뿐, 문장 전체의 짜임은 이어진문장으로 봅니다.' : ''} ${st.why}`;
     else msg = st.rel === '대등' ? `앞뒤 절의 뜻이 나열·대조·선택으로 대등하고, 순서를 바꿔도 뜻이 같으므로 대등하게 이어진 문장입니다. ${st.why}` : `앞 절이 뒤 절의 ${st.mean}이(가) 되어 순서를 바꾸면 뜻이 달라지므로 종속적으로 이어진 문장입니다. ${st.why}`;
     showExplanationModal(msg);
 };
@@ -2724,13 +2806,18 @@ window.s7ValidateTypes = () => {
     const guide = { "명사절": "'-음/-기'가 붙어 주어·목적어 노릇", "관형절": "'-ㄴ/-은/-는/-ㄹ'이 붙어 뒤의 체언을 꾸밈", "부사절": "'-이/-게/-도록'이 붙어 서술어를 꾸밈", "서술절": "주어가 두 번 나타나고 '주어+서술어'가 서술어 노릇", "인용절": "'고/라고'가 붙어 남의 말을 옮김" };
     showExplanationModal(`안긴문장은 ${[...st.types].join(', ')}입니다.\n\n${st.why}\n\n` + CLAUSE_TYPES.map(t => `• ${t}: ${guide[t]}`).join('\n'));
 };
-window.s7Part = (i, multi) => { if (s7.partsOk) return; if (multi) { s7.parts.has(i) ? s7.parts.delete(i) : s7.parts.add(i); } else s7.parts = new Set([i]); playSound('click'); sRenderApp(); };
-window.s7ValidateParts = () => {
-    const st = S.st, exp = st.k === '안은' ? st.parts : new Set([st.link]);
-    if (sameSet(s7.parts, exp)) { playSound('correct'); s7.partsOk = true; sRenderApp(); return; }
+window.s7Part = (i, multi) => { if (multi) { if (s7.partsOk) return; s7.parts.has(i) ? s7.parts.delete(i) : s7.parts.add(i); } else { if (s7.linkOk) return; s7.link = i; } playSound('click'); sRenderApp(); };
+window.s7ValidateLink = () => {
+    const st = S.st;
+    if (s7.link === st.link) { playSound('correct'); s7.linkOk = true; sRenderApp(); return; }
     sMarkWrong();
-    if (st.k === '안은') showExplanationModal(`안긴문장은 '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}'입니다. 안긴문장 안의 주어·목적어·부사어까지 모두 포함하고, 꾸밈을 받는 말(체언·의존 명사)은 뺍니다.\n\n${st.why}`);
-    else showExplanationModal(`앞 절의 서술어 '${S.eojeols[st.link].text}'에 연결 어미가 있습니다. 여기서 앞 절이 끝나고 뒤 절이 이어집니다.\n\n${st.why}`);
+    showExplanationModal(`앞 절의 서술어 '${S.eojeols[st.link].text}'에 연결 어미가 있습니다. 여기서 앞 절이 끝나고 뒤 절이 이어집니다.\n\n${st.why}`);
+};
+window.s7ValidateParts = () => {
+    const st = S.st;
+    if (sameSet(s7.parts, st.parts)) { playSound('correct'); s7.partsOk = true; sRenderApp(); return; }
+    sMarkWrong();
+    showExplanationModal(`안긴문장은 '${[...st.parts].map(i => S.eojeols[i].text).join(' ')}'입니다. 안긴문장 안의 주어·목적어·부사어까지 모두 포함하고, 꾸밈을 받는 말(체언·의존 명사)은 뺍니다.\n\n${st.why}`);
 };
 
 /* ---- 문장 튜토리얼 ---- */
