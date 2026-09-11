@@ -2303,6 +2303,7 @@ function myRecordHtml() {
 }
 function submitScore() {
     if (!RANK_API || !userName) return;
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;   // 개발용 로컬 실행은 랭킹에 안 올림
     const payload = { pid, name: userName, score: stats.score, words: stats.words, wrong: stats.wrong, best: stats.best, cls: userCls };
     try {
         fetch(RANK_API, { method: 'POST', body: JSON.stringify(payload) }).then(r => r.json()).then(d => {
